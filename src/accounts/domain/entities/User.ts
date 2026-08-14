@@ -1,0 +1,53 @@
+import { UserRole } from "../enums/UserRole";
+import { UserStatus } from "../enums/UserStatus";
+import { Email } from "../value-objects/Email";
+import { Address } from "./Address";
+
+export interface UserProps {
+  id: string;
+  email: Email;
+  passwordHash: string;
+  firstName: string;
+  lastName: string;
+  phone: string | null;
+  role: UserRole;
+  status: UserStatus;
+  emailVerifiedAt: Date | null;
+  addresses: Address[];
+}
+
+export class User {
+  private constructor(private props: UserProps) {}
+
+  static create(props: UserProps): User {
+    return new User(props);
+  }
+
+  get id(): string {
+    return this.props.id;
+  }
+
+  get email(): Email {
+    return this.props.email;
+  }
+
+  get role(): UserRole {
+    return this.props.role;
+  }
+
+  get status(): UserStatus {
+    return this.props.status;
+  }
+
+  get addresses(): Address[] {
+    return [...this.props.addresses];
+  }
+
+  isActive(): boolean {
+    return this.props.status === UserStatus.ACTIVE;
+  }
+
+  toProps(): UserProps {
+    return { ...this.props, addresses: this.addresses };
+  }
+}
