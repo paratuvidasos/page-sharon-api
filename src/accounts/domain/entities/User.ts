@@ -10,6 +10,7 @@ export interface UserProps {
   firstName: string;
   lastName: string;
   phone: string | null;
+  avatarUrl: string | null;
   role: UserRole;
   status: UserStatus;
   emailVerifiedAt: Date | null;
@@ -45,6 +46,10 @@ export class User {
     return [...this.props.addresses];
   }
 
+  get avatarUrl(): string | null {
+    return this.props.avatarUrl;
+  }
+
   isActive(): boolean {
     return this.props.status === UserStatus.ACTIVE;
   }
@@ -55,6 +60,16 @@ export class User {
 
   markEmailAsVerified(now: Date = new Date()): void {
     this.props.emailVerifiedAt = now;
+  }
+
+  /**
+   * Restablecer la contraseña por un enlace de recuperación ya prueba que el
+   * usuario es dueño del correo, así que también levanta un bloqueo por
+   * intentos fallidos previo.
+   */
+  changePassword(newPasswordHash: string): void {
+    this.props.passwordHash = newPasswordHash;
+    this.resetFailedLoginAttempts();
   }
 
   get failedLoginAttempts(): number {
@@ -80,6 +95,17 @@ export class User {
   resetFailedLoginAttempts(): void {
     this.props.failedLoginAttempts = 0;
     this.props.lockedUntil = null;
+  }
+
+  /**
+   * El correo no se incluye aquí a propósito: cambiarlo requiere su propio
+   * flujo de reverificación, no la edición de perfil.
+   */
+  updateProfile(input: { firstName: string; lastName: string; phone: string | null; avatarUrl: string | null }): void {
+    this.props.firstName = input.firstName;
+    this.props.lastName = input.lastName;
+    this.props.phone = input.phone;
+    this.props.avatarUrl = input.avatarUrl;
   }
 
   toProps(): UserProps {
