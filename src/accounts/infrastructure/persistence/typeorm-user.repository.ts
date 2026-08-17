@@ -2,6 +2,7 @@ import { DataSource, Repository } from "typeorm";
 import { User } from "../../domain/entities/User";
 import { UserRepository } from "../../domain/repositories/UserRepository";
 import { Email } from "../../domain/value-objects/Email";
+import { UserAddressOrmEntity } from "./entities/addresses/UserAddressOrmEntity";
 import { UserOrmEntity } from "./entities/UserOrmEntity";
 import { UserMapper } from "./mappers/UserMapper";
 
@@ -30,5 +31,9 @@ export class TypeOrmUserRepository implements UserRepository {
       relations: { addresses: true },
     });
     return orm ? UserMapper.toDomain(orm) : null;
+  }
+
+  async deleteAddress(addressId: string): Promise<void> {
+    await this.ormRepository.manager.delete(UserAddressOrmEntity, { id: addressId });
   }
 }

@@ -1,7 +1,7 @@
 import { UserRole } from "../enums/UserRole";
 import { UserStatus } from "../enums/UserStatus";
 import { Email } from "../value-objects/Email";
-import { Address } from "./Address";
+import { Address } from "./addresses/Address";
 
 export interface UserProps {
   id: string;
@@ -44,6 +44,42 @@ export class User {
 
   get addresses(): Address[] {
     return [...this.props.addresses];
+  }
+
+  findAddressById(addressId: string): Address | undefined {
+    return this.props.addresses.find((address) => address.id === addressId);
+  }
+
+  hasActiveAddresses(): boolean {
+    return this.props.addresses.some((address) => !address.isArchived);
+  }
+
+  addAddress(address: Address): void {
+    this.props.addresses.push(address);
+  }
+
+  removeAddress(addressId: string): void {
+    this.props.addresses = this.props.addresses.filter((address) => address.id !== addressId);
+  }
+
+  setDefaultShippingAddress(addressId: string): void {
+    this.props.addresses.forEach((address) => {
+      if (address.id === addressId) {
+        address.markAsDefaultShipping();
+      } else {
+        address.unmarkAsDefaultShipping();
+      }
+    });
+  }
+
+  /**
+   * Al borrar la dirección predeterminada, promueve la primera dirección
+   * activa restante para que siempre quede una predeterminada mientras haya
+   * al menos una dirección activa.
+   */
+  promoteFirstActiveAddressToDefault(): void {
+    const nextDefault = this.props.addresses.find((address) => !address.isArchived);
+    nextDefault?.markAsDefaultShipping();
   }
 
   get avatarUrl(): string | null {

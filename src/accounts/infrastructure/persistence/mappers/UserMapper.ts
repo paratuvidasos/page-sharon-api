@@ -1,7 +1,7 @@
-import { Address } from "../../../domain/entities/Address";
+import { Address } from "../../../domain/entities/addresses/Address";
 import { User } from "../../../domain/entities/User";
 import { Email } from "../../../domain/value-objects/Email";
-import { UserAddressOrmEntity } from "../entities/UserAddressOrmEntity";
+import { UserAddressOrmEntity } from "../entities/addresses/UserAddressOrmEntity";
 import { UserOrmEntity } from "../entities/UserOrmEntity";
 
 export class UserMapper {
@@ -33,6 +33,7 @@ export class UserMapper {
           streetLine2: address.streetLine2,
           isDefaultShipping: address.isDefaultShipping,
           isDefaultBilling: address.isDefaultBilling,
+          isArchived: address.isArchived,
         }),
       ),
     });
@@ -69,6 +70,7 @@ export class UserMapper {
       addressOrm.streetLine2 = addressProps.streetLine2;
       addressOrm.isDefaultShipping = addressProps.isDefaultShipping;
       addressOrm.isDefaultBilling = addressProps.isDefaultBilling;
+      addressOrm.isArchived = addressProps.isArchived;
       return addressOrm;
     });
     return orm;
