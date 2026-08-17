@@ -47,6 +47,14 @@ export class User {
     return this.props.status === UserStatus.ACTIVE;
   }
 
+  isEmailVerified(): boolean {
+    return this.props.emailVerifiedAt !== null;
+  }
+
+  markEmailAsVerified(now: Date = new Date()): void {
+    this.props.emailVerifiedAt = now;
+  }
+
   toProps(): UserProps {
     return { ...this.props, addresses: this.addresses };
   }
