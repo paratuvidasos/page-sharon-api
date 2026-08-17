@@ -19,4 +19,14 @@ export class TypeOrmEmailVerificationTokenRepository implements EmailVerificatio
     const orm = await this.ormRepository.findOne({ where: { tokenHash } });
     return orm ? EmailVerificationTokenMapper.toDomain(orm) : null;
   }
+
+  async invalidateActiveByUserId(userId: string): Promise<void> {
+    await this.ormRepository
+      .createQueryBuilder()
+      .update()
+      .set({ usedAt: () => "now()" })
+      .where("user_id = :userId", { userId })
+      .andWhere("used_at IS NULL")
+      .execute();
+  }
 }
