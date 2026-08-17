@@ -1,6 +1,9 @@
 import { NextFunction, Request, Response } from "express";
+import { MulterError } from "multer";
 import { ZodError } from "zod";
 import { DomainException } from "../../domain/exceptions/DomainException";
+
+const AVATAR_MAX_SIZE_MB = Number(process.env.AVATAR_MAX_SIZE_MB ?? 5);
 
 export function errorHandler(
   err: unknown,
@@ -10,6 +13,15 @@ export function errorHandler(
 ): void {
   if (err instanceof DomainException) {
     res.status(err.statusCode).json({ error: err.code, message: err.message });
+    return;
+  }
+
+  if (err instanceof MulterError) {
+    const message =
+      err.code === "LIMIT_FILE_SIZE"
+        ? `El archivo supera el tamaño máximo permitido (${AVATAR_MAX_SIZE_MB}MB).`
+        : "No se pudo procesar el archivo enviado.";
+    res.status(400).json({ error: "INVALID_FILE", message });
     return;
   }
 

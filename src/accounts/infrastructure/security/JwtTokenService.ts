@@ -7,4 +7,8 @@ export class JwtTokenService implements TokenService {
   signAccessToken(payload: AccessTokenPayload, ttlSeconds: number): string {
     return jwt.sign(payload, this.secret, { expiresIn: ttlSeconds });
   }
+
+  verifyAccessToken(token: string): AccessTokenPayload {
+    return jwt.verify(token, this.secret) as AccessTokenPayload;
+  }
 }

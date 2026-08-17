@@ -8,4 +8,5 @@ export interface AccessTokenPayload {
 
 export interface TokenService {
   signAccessToken(payload: AccessTokenPayload, ttlSeconds: number): string;
+  verifyAccessToken(token: string): AccessTokenPayload;
 }
