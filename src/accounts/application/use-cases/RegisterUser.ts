@@ -55,6 +55,8 @@ export class RegisterUser {
       role: UserRole.CUSTOMER,
       status: UserStatus.ACTIVE,
       emailVerifiedAt: null,
+      failedLoginAttempts: 0,
+      lockedUntil: null,
       addresses: [],
     });
 

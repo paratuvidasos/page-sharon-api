@@ -45,6 +45,12 @@ export class UserOrmEntity {
   @Column({ name: "email_verified_at", type: "timestamptz", nullable: true })
   emailVerifiedAt!: Date | null;
 
+  @Column({ name: "failed_login_attempts", type: "int", default: 0 })
+  failedLoginAttempts!: number;
+
+  @Column({ name: "locked_until", type: "timestamptz", nullable: true })
+  lockedUntil!: Date | null;
+
   @OneToMany(() => UserAddressOrmEntity, (address) => address.user, {
     cascade: true,
   })

@@ -16,6 +16,8 @@ export class UserMapper {
       role: orm.role,
       status: orm.status,
       emailVerifiedAt: orm.emailVerifiedAt,
+      failedLoginAttempts: orm.failedLoginAttempts,
+      lockedUntil: orm.lockedUntil,
       addresses: (orm.addresses ?? []).map((address) =>
         Address.create({
           id: address.id,
@@ -47,6 +49,8 @@ export class UserMapper {
     orm.role = props.role;
     orm.status = props.status;
     orm.emailVerifiedAt = props.emailVerifiedAt;
+    orm.failedLoginAttempts = props.failedLoginAttempts;
+    orm.lockedUntil = props.lockedUntil;
     orm.addresses = props.addresses.map((address) => {
       const addressProps = address.toProps();
       const addressOrm = new UserAddressOrmEntity();

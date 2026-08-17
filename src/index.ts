@@ -1,4 +1,5 @@
 import "dotenv/config";
+import cookieParser from "cookie-parser";
 import cors from "cors";
 import express from "express";
 import swaggerUi from "swagger-ui-express";
@@ -15,6 +16,7 @@ async function bootstrap(): Promise<void> {
   const app = express();
   app.use(cors({ origin: process.env.FRONTEND_URL, credentials: true }));
   app.use(express.json());
+  app.use(cookieParser());
 
   app.get("/api/v1/health", (_req, res) => {
     res.json({ status: "ok" });
