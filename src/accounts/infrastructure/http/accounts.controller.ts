@@ -2,13 +2,20 @@ import { Request, Response } from "express";
 import { LoginUser } from "../../application/use-cases/LoginUser";
 import { RefreshAccessToken } from "../../application/use-cases/RefreshAccessToken";
 import { RegisterUser } from "../../application/use-cases/RegisterUser";
+import { RequestPasswordReset } from "../../application/use-cases/RequestPasswordReset";
 import { ResendVerificationEmail } from "../../application/use-cases/ResendVerificationEmail";
+import { ResetPassword } from "../../application/use-cases/ResetPassword";
+import { UpdateProfile } from "../../application/use-cases/UpdateProfile";
 import { VerifyEmail } from "../../application/use-cases/VerifyEmail";
 import { InvalidRefreshTokenException } from "../../domain/exceptions/InvalidRefreshTokenException";
+import { UnauthorizedException } from "../../domain/exceptions/UnauthorizedException";
 import { LoginRequestSchema } from "./schemas/login.schema";
 import "./schemas/refresh-token.schema";
 import { RegisterRequestSchema } from "./schemas/register.schema";
+import { RequestPasswordResetRequestSchema } from "./schemas/request-password-reset.schema";
 import { ResendVerificationEmailRequestSchema } from "./schemas/resend-verification-email.schema";
+import { ResetPasswordRequestSchema } from "./schemas/reset-password.schema";
+import { UpdateProfileRequestSchema } from "./schemas/update-profile.schema";
 import { VerifyEmailQuerySchema } from "./schemas/verify-email.schema";
 
 const REFRESH_TOKEN_COOKIE_NAME = "refresh_token";
@@ -19,6 +26,9 @@ const GENERIC_REGISTER_MESSAGE =
 const GENERIC_RESEND_MESSAGE =
   "Si el correo ingresado corresponde a una cuenta sin verificar, te reenviamos el enlace.";
 
+const GENERIC_PASSWORD_RESET_REQUEST_MESSAGE =
+  "Si el correo ingresado corresponde a una cuenta, te enviamos un enlace para recuperarla.";
+
 export class AccountsController {
   constructor(
     private readonly registerUser: RegisterUser,
@@ -26,6 +36,9 @@ export class AccountsController {
     private readonly resendVerificationEmail: ResendVerificationEmail,
     private readonly loginUser: LoginUser,
     private readonly refreshAccessToken: RefreshAccessToken,
+    private readonly requestPasswordResetUseCase: RequestPasswordReset,
+    private readonly resetPasswordUseCase: ResetPassword,
+    private readonly updateProfileUseCase: UpdateProfile,
   ) {}
 
   private setRefreshTokenCookie(res: Response, token: string, expiresAt: Date): void {
@@ -94,5 +107,36 @@ export class AccountsController {
       expiresIn: result.accessTokenExpiresIn,
       user: result.user,
     });
+  };
+
+  requestPasswordReset = async (req: Request, res: Response): Promise<void> => {
+    const input = RequestPasswordResetRequestSchema.parse(req.body);
+    await this.requestPasswordResetUseCase.execute(input);
+    res.status(200).json({ message: GENERIC_PASSWORD_RESET_REQUEST_MESSAGE });
+  };
+
+  resetPasswordWithToken = async (req: Request, res: Response): Promise<void> => {
+    const input = ResetPasswordRequestSchema.parse(req.body);
+    await this.resetPasswordUseCase.execute({ token: input.token, newPassword: input.newPassword });
+    res.status(200).json({ message: "Tu contraseña se actualizó correctamente." });
+  };
+
+  updateProfile = async (req: Request, res: Response): Promise<void> => {
+    if (!req.authUser) {
+      throw new UnauthorizedException();
+    }
+
+    const input = UpdateProfileRequestSchema.parse(req.body);
+    const result = await this.updateProfileUseCase.execute({
+      userId: req.authUser.sub,
+      firstName: input.firstName,
+      lastName: input.lastName,
+      phone: input.phone,
+      avatarFile: req.file
+        ? { buffer: req.file.buffer, mimeType: req.file.mimetype, originalName: req.file.originalname }
+        : null,
+    });
+
+    res.status(200).json(result);
   };
 }
