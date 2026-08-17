@@ -13,6 +13,7 @@ export class UserMapper {
       firstName: orm.firstName,
       lastName: orm.lastName,
       phone: orm.phone,
+      avatarUrl: orm.avatarUrl,
       role: orm.role,
       status: orm.status,
       emailVerifiedAt: orm.emailVerifiedAt,
@@ -46,6 +47,7 @@ export class UserMapper {
     orm.firstName = props.firstName;
     orm.lastName = props.lastName;
     orm.phone = props.phone;
+    orm.avatarUrl = props.avatarUrl;
     orm.role = props.role;
     orm.status = props.status;
     orm.emailVerifiedAt = props.emailVerifiedAt;

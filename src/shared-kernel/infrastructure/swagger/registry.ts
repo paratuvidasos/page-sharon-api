@@ -5,6 +5,12 @@ extendZodWithOpenApi(z);
 
 export const registry = new OpenAPIRegistry();
 
+registry.registerComponent("securitySchemes", "bearerAuth", {
+  type: "http",
+  scheme: "bearer",
+  bearerFormat: "JWT",
+});
+
 export function getOpenApiDocument() {
   const generator = new OpenApiGeneratorV3(registry.definitions);
   return generator.generateDocument({

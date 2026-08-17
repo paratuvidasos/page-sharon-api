@@ -17,6 +17,7 @@ async function bootstrap(): Promise<void> {
   app.use(cors({ origin: process.env.FRONTEND_URL, credentials: true }));
   app.use(express.json());
   app.use(cookieParser());
+  app.use("/uploads", express.static(process.env.UPLOADS_DIR ?? "uploads"));
 
   app.get("/api/v1/health", (_req, res) => {
     res.json({ status: "ok" });
