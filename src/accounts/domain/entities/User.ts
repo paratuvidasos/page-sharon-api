@@ -13,6 +13,8 @@ export interface UserProps {
   role: UserRole;
   status: UserStatus;
   emailVerifiedAt: Date | null;
+  failedLoginAttempts: number;
+  lockedUntil: Date | null;
   addresses: Address[];
 }
 
@@ -53,6 +55,31 @@ export class User {
 
   markEmailAsVerified(now: Date = new Date()): void {
     this.props.emailVerifiedAt = now;
+  }
+
+  get failedLoginAttempts(): number {
+    return this.props.failedLoginAttempts;
+  }
+
+  get lockedUntil(): Date | null {
+    return this.props.lockedUntil;
+  }
+
+  isLockedOut(now: Date = new Date()): boolean {
+    return this.props.lockedUntil !== null && this.props.lockedUntil > now;
+  }
+
+  recordFailedLoginAttempt(): void {
+    this.props.failedLoginAttempts += 1;
+  }
+
+  lockUntil(date: Date): void {
+    this.props.lockedUntil = date;
+  }
+
+  resetFailedLoginAttempts(): void {
+    this.props.failedLoginAttempts = 0;
+    this.props.lockedUntil = null;
   }
 
   toProps(): UserProps {
