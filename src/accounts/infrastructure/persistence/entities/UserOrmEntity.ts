@@ -10,7 +10,7 @@ import {
 } from "typeorm";
 import { UserRole } from "../../../domain/enums/UserRole";
 import { UserStatus } from "../../../domain/enums/UserStatus";
-import { UserAddressOrmEntity } from "./UserAddressOrmEntity";
+import { UserAddressOrmEntity } from "./addresses/UserAddressOrmEntity";
 
 @Entity({ name: "users" })
 @Index("ux_users_email_active", ["email"], {
@@ -54,6 +54,11 @@ export class UserOrmEntity {
   @Column({ name: "locked_until", type: "timestamptz", nullable: true })
   lockedUntil!: Date | null;
 
+  // Sin orphanedRowAction: quitar una dirección del array y hacer save() no
+  // la borra de la tabla (TypeORM la deja huérfana intacta) — probamos
+  // orphanedRowAction: "delete" y falla contra la FK NOT NULL (intenta un
+  // UPDATE a null antes del delete). Por eso el borrado real de una
+  // dirección se hace con UserRepository.deleteAddress(), no vía cascade.
   @OneToMany(() => UserAddressOrmEntity, (address) => address.user, {
     cascade: true,
   })

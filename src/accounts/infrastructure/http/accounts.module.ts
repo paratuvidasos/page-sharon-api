@@ -2,23 +2,31 @@ import { Router } from "express";
 import { DataSource } from "typeorm";
 import { buildEmailSender } from "../../../shared-kernel/infrastructure/email/build-email-sender";
 import { LocalFileStorage } from "../../../shared-kernel/infrastructure/storage/LocalFileStorage";
-import { LoginUser } from "../../application/use-cases/LoginUser";
-import { RefreshAccessToken } from "../../application/use-cases/RefreshAccessToken";
-import { RegisterUser } from "../../application/use-cases/RegisterUser";
-import { RequestPasswordReset } from "../../application/use-cases/RequestPasswordReset";
-import { ResendVerificationEmail } from "../../application/use-cases/ResendVerificationEmail";
-import { ResetPassword } from "../../application/use-cases/ResetPassword";
-import { UpdateProfile } from "../../application/use-cases/UpdateProfile";
-import { VerifyEmail } from "../../application/use-cases/VerifyEmail";
+import { AddAddress } from "../../application/use-cases/addresses/AddAddress";
+import { ArchiveAddress } from "../../application/use-cases/addresses/ArchiveAddress";
+import { DeleteAddress } from "../../application/use-cases/addresses/DeleteAddress";
+import { ListAddresses } from "../../application/use-cases/addresses/ListAddresses";
+import { LoginUser } from "../../application/use-cases/session/LoginUser";
+import { RefreshAccessToken } from "../../application/use-cases/session/RefreshAccessToken";
+import { RegisterUser } from "../../application/use-cases/registration/RegisterUser";
+import { RequestPasswordReset } from "../../application/use-cases/password-reset/RequestPasswordReset";
+import { ResendVerificationEmail } from "../../application/use-cases/registration/ResendVerificationEmail";
+import { ResetPassword } from "../../application/use-cases/password-reset/ResetPassword";
+import { RestoreAddress } from "../../application/use-cases/addresses/RestoreAddress";
+import { SetDefaultShippingAddress } from "../../application/use-cases/addresses/SetDefaultShippingAddress";
+import { UpdateAddress } from "../../application/use-cases/addresses/UpdateAddress";
+import { UpdateProfile } from "../../application/use-cases/profile/UpdateProfile";
+import { VerifyEmail } from "../../application/use-cases/registration/VerifyEmail";
 import { BcryptPasswordHasher } from "../security/BcryptPasswordHasher";
 import { JwtTokenService } from "../security/JwtTokenService";
-import { TypeOrmEmailVerificationTokenRepository } from "../persistence/typeorm-email-verification-token.repository";
-import { TypeOrmPasswordResetTokenRepository } from "../persistence/typeorm-password-reset-token.repository";
-import { TypeOrmRefreshTokenRepository } from "../persistence/typeorm-refresh-token.repository";
+import { TypeOrmEmailVerificationTokenRepository } from "../persistence/registration/typeorm-email-verification-token.repository";
+import { TypeOrmPasswordResetTokenRepository } from "../persistence/password-reset/typeorm-password-reset-token.repository";
+import { TypeOrmRefreshTokenRepository } from "../persistence/session/typeorm-refresh-token.repository";
 import { TypeOrmUserRepository } from "../persistence/typeorm-user.repository";
 import { AccountsController } from "./accounts.controller";
 import { buildAccountsRoutes } from "./accounts.routes";
-import { buildAuthenticate } from "./authenticate.middleware";
+import { AddressesController } from "./addresses/addresses.controller";
+import { buildAuthenticate } from "./session/authenticate.middleware";
 
 export function buildAccountsModule(dataSource: DataSource): Router {
   const userRepository = new TypeOrmUserRepository(dataSource);
@@ -71,9 +79,27 @@ export function buildAccountsModule(dataSource: DataSource): Router {
     updateProfile,
   );
 
+  const addAddress = new AddAddress(userRepository);
+  const listAddresses = new ListAddresses(userRepository);
+  const updateAddress = new UpdateAddress(userRepository);
+  const deleteAddress = new DeleteAddress(userRepository);
+  const setDefaultShippingAddress = new SetDefaultShippingAddress(userRepository);
+  const archiveAddress = new ArchiveAddress(userRepository);
+  const restoreAddress = new RestoreAddress(userRepository);
+
+  const addressesController = new AddressesController(
+    addAddress,
+    listAddresses,
+    updateAddress,
+    deleteAddress,
+    setDefaultShippingAddress,
+    archiveAddress,
+    restoreAddress,
+  );
+
   const authenticate = buildAuthenticate(tokenService);
 
-  return buildAccountsRoutes(controller, authenticate);
+  return buildAccountsRoutes(controller, addressesController, authenticate);
 }
 
 function requireJwtSecret(): string {

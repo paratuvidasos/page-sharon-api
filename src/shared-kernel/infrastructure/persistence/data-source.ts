@@ -11,6 +11,6 @@ export const AppDataSource = new DataSource({
   database: process.env.DB_NAME ?? "page_sharon_dev",
   synchronize: false,
   logging: process.env.NODE_ENV === "development",
-  entities: ["src/*/infrastructure/persistence/entities/*.ts"],
+  entities: ["src/*/infrastructure/persistence/entities/**/*.ts"],
   migrations: ["src/*/infrastructure/persistence/migrations/*.ts"],
 });
