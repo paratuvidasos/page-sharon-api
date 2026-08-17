@@ -7,6 +7,7 @@ export function buildAccountsRoutes(controller: AccountsController): Router {
 
   router.post("/register", asyncHandler(controller.register));
   router.get("/verify-email", asyncHandler(controller.verifyEmailByToken));
+  router.post("/resend-verification-email", asyncHandler(controller.resendVerification));
 
   return router;
 }
