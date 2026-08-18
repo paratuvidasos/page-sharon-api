@@ -9,6 +9,8 @@ import { ArchiveAddress } from "../../application/use-cases/addresses/ArchiveAdd
 import { DeleteAddress } from "../../application/use-cases/addresses/DeleteAddress";
 import { ListAddresses } from "../../application/use-cases/addresses/ListAddresses";
 import { LoginUser } from "../../application/use-cases/session/LoginUser";
+import { LogoutAllSessions } from "../../application/use-cases/session/LogoutAllSessions";
+import { LogoutUser } from "../../application/use-cases/session/LogoutUser";
 import { RefreshAccessToken } from "../../application/use-cases/session/RefreshAccessToken";
 import { RegisterUser } from "../../application/use-cases/registration/RegisterUser";
 import { RequestPasswordReset } from "../../application/use-cases/password-reset/RequestPasswordReset";
@@ -17,6 +19,7 @@ import { ResetPassword } from "../../application/use-cases/password-reset/ResetP
 import { RestoreAddress } from "../../application/use-cases/addresses/RestoreAddress";
 import { SetDefaultShippingAddress } from "../../application/use-cases/addresses/SetDefaultShippingAddress";
 import { UpdateAddress } from "../../application/use-cases/addresses/UpdateAddress";
+import { GetProfile } from "../../application/use-cases/profile/GetProfile";
 import { UpdateProfile } from "../../application/use-cases/profile/UpdateProfile";
 import { VerifyEmail } from "../../application/use-cases/registration/VerifyEmail";
 import { BcryptPasswordHasher } from "../security/BcryptPasswordHasher";
@@ -67,6 +70,9 @@ export function buildAccountsModule(dataSource: DataSource): Router {
     passwordHasher,
   );
   const updateProfile = new UpdateProfile(userRepository, fileStorage);
+  const logoutUser = new LogoutUser(refreshTokenRepository);
+  const logoutAllSessions = new LogoutAllSessions(refreshTokenRepository);
+  const getProfile = new GetProfile(userRepository);
 
   const controller = new AccountsController(
     registerUser,
@@ -77,6 +83,9 @@ export function buildAccountsModule(dataSource: DataSource): Router {
     requestPasswordReset,
     resetPassword,
     updateProfile,
+    logoutUser,
+    logoutAllSessions,
+    getProfile,
   );
 
   const addAddress = new AddAddress(userRepository);
