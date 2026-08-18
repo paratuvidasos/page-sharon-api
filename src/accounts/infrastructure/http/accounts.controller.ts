@@ -8,7 +8,7 @@ import { ResetPassword } from "../../application/use-cases/password-reset/ResetP
 import { UpdateProfile } from "../../application/use-cases/profile/UpdateProfile";
 import { VerifyEmail } from "../../application/use-cases/registration/VerifyEmail";
 import { InvalidRefreshTokenException } from "../../domain/exceptions/session/InvalidRefreshTokenException";
-import { UnauthorizedException } from "../../domain/exceptions/UnauthorizedException";
+import { UnauthorizedException } from "../../../shared-kernel/domain/exceptions/UnauthorizedException";
 import { LoginRequestSchema } from "./schemas/session/login.schema";
 import "./schemas/session/refresh-token.schema";
 import { RegisterRequestSchema } from "./schemas/registration/register.schema";
