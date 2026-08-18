@@ -1,16 +1,22 @@
 import { Request, Response } from "express";
 import { LoginUser } from "../../application/use-cases/session/LoginUser";
+import { LogoutAllSessions } from "../../application/use-cases/session/LogoutAllSessions";
+import { LogoutUser } from "../../application/use-cases/session/LogoutUser";
 import { RefreshAccessToken } from "../../application/use-cases/session/RefreshAccessToken";
 import { RegisterUser } from "../../application/use-cases/registration/RegisterUser";
 import { RequestPasswordReset } from "../../application/use-cases/password-reset/RequestPasswordReset";
 import { ResendVerificationEmail } from "../../application/use-cases/registration/ResendVerificationEmail";
 import { ResetPassword } from "../../application/use-cases/password-reset/ResetPassword";
+import { GetProfile } from "../../application/use-cases/profile/GetProfile";
 import { UpdateProfile } from "../../application/use-cases/profile/UpdateProfile";
 import { VerifyEmail } from "../../application/use-cases/registration/VerifyEmail";
 import { InvalidRefreshTokenException } from "../../domain/exceptions/session/InvalidRefreshTokenException";
 import { UnauthorizedException } from "../../../shared-kernel/domain/exceptions/UnauthorizedException";
 import { LoginRequestSchema } from "./schemas/session/login.schema";
 import "./schemas/session/refresh-token.schema";
+import "./schemas/session/logout.schema";
+import "./schemas/session/logout-all.schema";
+import "./schemas/profile/get-profile.schema";
 import { RegisterRequestSchema } from "./schemas/registration/register.schema";
 import { RequestPasswordResetRequestSchema } from "./schemas/password-reset/request-password-reset.schema";
 import { ResendVerificationEmailRequestSchema } from "./schemas/registration/resend-verification-email.schema";
@@ -39,6 +45,9 @@ export class AccountsController {
     private readonly requestPasswordResetUseCase: RequestPasswordReset,
     private readonly resetPasswordUseCase: ResetPassword,
     private readonly updateProfileUseCase: UpdateProfile,
+    private readonly logoutUser: LogoutUser,
+    private readonly logoutAllSessionsUseCase: LogoutAllSessions,
+    private readonly getProfileUseCase: GetProfile,
   ) {}
 
   private setRefreshTokenCookie(res: Response, token: string, expiresAt: Date): void {
@@ -48,6 +57,15 @@ export class AccountsController {
       sameSite: "lax",
       path: "/api/v1/accounts",
       expires: expiresAt,
+    });
+  }
+
+  private clearRefreshTokenCookie(res: Response): void {
+    res.clearCookie(REFRESH_TOKEN_COOKIE_NAME, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/api/v1/accounts",
     });
   }
 
@@ -109,6 +127,25 @@ export class AccountsController {
     });
   };
 
+  logout = async (req: Request, res: Response): Promise<void> => {
+    const refreshToken = req.cookies?.[REFRESH_TOKEN_COOKIE_NAME];
+    await this.logoutUser.execute({ refreshToken });
+    this.clearRefreshTokenCookie(res);
+    res.status(200).json({ message: "Sesión cerrada correctamente." });
+  };
+
+  logoutAllSessions = async (req: Request, res: Response): Promise<void> => {
+    if (!req.authUser) {
+      throw new UnauthorizedException();
+    }
+
+    await this.logoutAllSessionsUseCase.execute({ userId: req.authUser.sub });
+    this.clearRefreshTokenCookie(res);
+    res.status(200).json({
+      message: "Se cerraron todas las sesiones activas. Debes iniciar sesión nuevamente en cada dispositivo.",
+    });
+  };
+
   requestPasswordReset = async (req: Request, res: Response): Promise<void> => {
     const input = RequestPasswordResetRequestSchema.parse(req.body);
     await this.requestPasswordResetUseCase.execute(input);
@@ -119,6 +156,15 @@ export class AccountsController {
     const input = ResetPasswordRequestSchema.parse(req.body);
     await this.resetPasswordUseCase.execute({ token: input.token, newPassword: input.newPassword });
     res.status(200).json({ message: "Tu contraseña se actualizó correctamente." });
+  };
+
+  getProfile = async (req: Request, res: Response): Promise<void> => {
+    if (!req.authUser) {
+      throw new UnauthorizedException();
+    }
+
+    const result = await this.getProfileUseCase.execute({ userId: req.authUser.sub });
+    res.status(200).json(result);
   };
 
   updateProfile = async (req: Request, res: Response): Promise<void> => {

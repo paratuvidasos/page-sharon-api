@@ -17,8 +17,11 @@ export function buildAccountsRoutes(
   router.post("/resend-verification-email", asyncHandler(controller.resendVerification));
   router.post("/login", asyncHandler(controller.login));
   router.post("/refresh-token", asyncHandler(controller.refreshToken));
+  router.post("/logout", asyncHandler(controller.logout));
+  router.post("/logout-all", authenticate, asyncHandler(controller.logoutAllSessions));
   router.post("/forgot-password", asyncHandler(controller.requestPasswordReset));
   router.post("/reset-password", asyncHandler(controller.resetPasswordWithToken));
+  router.get("/me", authenticate, asyncHandler(controller.getProfile));
   router.patch("/me", authenticate, uploadAvatar, asyncHandler(controller.updateProfile));
   router.use("/me/addresses", buildAddressesRoutes(addressesController, authenticate));
 
