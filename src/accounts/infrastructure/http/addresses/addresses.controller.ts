@@ -6,7 +6,7 @@ import { ListAddresses } from "../../../application/use-cases/addresses/ListAddr
 import { RestoreAddress } from "../../../application/use-cases/addresses/RestoreAddress";
 import { SetDefaultShippingAddress } from "../../../application/use-cases/addresses/SetDefaultShippingAddress";
 import { UpdateAddress } from "../../../application/use-cases/addresses/UpdateAddress";
-import { UnauthorizedException } from "../../../domain/exceptions/UnauthorizedException";
+import { UnauthorizedException } from "../../../../shared-kernel/domain/exceptions/UnauthorizedException";
 import "../schemas/addresses/address-actions.schema";
 import { AddressIdParamsSchema } from "../schemas/addresses/address-response.schema";
 import { CreateAddressRequestSchema } from "../schemas/addresses/create-address.schema";
