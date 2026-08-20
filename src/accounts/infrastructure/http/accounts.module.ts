@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { DataSource } from "typeorm";
+import { domainEventBus } from "../../../shared-kernel/infrastructure/events/InMemoryDomainEventBus";
 import { buildEmailSender } from "../../../shared-kernel/infrastructure/email/build-email-sender";
 import { buildAuthenticate } from "../../../shared-kernel/infrastructure/http/authenticate.middleware";
 import { JwtTokenService } from "../../../shared-kernel/infrastructure/security/JwtTokenService";
@@ -7,6 +8,7 @@ import { LocalFileStorage } from "../../../shared-kernel/infrastructure/storage/
 import { AddAddress } from "../../application/use-cases/addresses/AddAddress";
 import { ArchiveAddress } from "../../application/use-cases/addresses/ArchiveAddress";
 import { DeleteAddress } from "../../application/use-cases/addresses/DeleteAddress";
+import { DeleteAccount } from "../../application/use-cases/profile/DeleteAccount";
 import { ListAddresses } from "../../application/use-cases/addresses/ListAddresses";
 import { LoginUser } from "../../application/use-cases/session/LoginUser";
 import { LogoutAllSessions } from "../../application/use-cases/session/LogoutAllSessions";
@@ -73,6 +75,15 @@ export function buildAccountsModule(dataSource: DataSource): Router {
   const logoutUser = new LogoutUser(refreshTokenRepository);
   const logoutAllSessions = new LogoutAllSessions(refreshTokenRepository);
   const getProfile = new GetProfile(userRepository);
+  const deleteAccount = new DeleteAccount(
+    userRepository,
+    refreshTokenRepository,
+    passwordResetTokenRepository,
+    emailVerificationTokenRepository,
+    passwordHasher,
+    emailSender,
+    domainEventBus,
+  );
 
   const controller = new AccountsController(
     registerUser,
@@ -86,6 +97,7 @@ export function buildAccountsModule(dataSource: DataSource): Router {
     logoutUser,
     logoutAllSessions,
     getProfile,
+    deleteAccount,
   );
 
   const addAddress = new AddAddress(userRepository);

@@ -23,6 +23,7 @@ export function buildAccountsRoutes(
   router.post("/reset-password", asyncHandler(controller.resetPasswordWithToken));
   router.get("/me", authenticate, asyncHandler(controller.getProfile));
   router.patch("/me", authenticate, uploadAvatar, asyncHandler(controller.updateProfile));
+  router.delete("/me", authenticate, asyncHandler(controller.deleteAccount));
   router.use("/me/addresses", buildAddressesRoutes(addressesController, authenticate));
 
   return router;
