@@ -36,4 +36,12 @@ export class TypeOrmUserRepository implements UserRepository {
   async deleteAddress(addressId: string): Promise<void> {
     await this.ormRepository.manager.delete(UserAddressOrmEntity, { id: addressId });
   }
+
+  async deleteAllAddresses(userId: string): Promise<void> {
+    await this.ormRepository.manager.delete(UserAddressOrmEntity, { userId });
+  }
+
+  async softDelete(userId: string): Promise<void> {
+    await this.ormRepository.softDelete(userId);
+  }
 }

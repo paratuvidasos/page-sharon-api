@@ -144,6 +144,23 @@ export class User {
     this.props.avatarUrl = input.avatarUrl;
   }
 
+  /**
+   * Elimina/anonimiza los datos personales identificables del usuario
+   * (email, nombre, teléfono, foto, contraseña) para cumplir con el
+   * derecho de eliminación, dejando el registro como un "tombstone"
+   * inutilizable en vez de borrar la fila (el borrado físico y el
+   * soft-delete los coordina el repositorio).
+   */
+  anonymize(anonymizedEmail: Email, unusablePasswordHash: string): void {
+    this.props.email = anonymizedEmail;
+    this.props.passwordHash = unusablePasswordHash;
+    this.props.firstName = "Usuario";
+    this.props.lastName = "eliminado";
+    this.props.phone = null;
+    this.props.avatarUrl = null;
+    this.props.status = UserStatus.DELETED;
+  }
+
   toProps(): UserProps {
     return { ...this.props, addresses: this.addresses };
   }
