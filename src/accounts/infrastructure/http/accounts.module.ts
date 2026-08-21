@@ -15,6 +15,7 @@ import { LogoutAllSessions } from "../../application/use-cases/session/LogoutAll
 import { LogoutUser } from "../../application/use-cases/session/LogoutUser";
 import { RefreshAccessToken } from "../../application/use-cases/session/RefreshAccessToken";
 import { RegisterUser } from "../../application/use-cases/registration/RegisterUser";
+import { RegisterUserForCheckout } from "../../application/use-cases/registration/RegisterUserForCheckout";
 import { RequestPasswordReset } from "../../application/use-cases/password-reset/RequestPasswordReset";
 import { ResendVerificationEmail } from "../../application/use-cases/registration/ResendVerificationEmail";
 import { ResetPassword } from "../../application/use-cases/password-reset/ResetPassword";
@@ -33,7 +34,13 @@ import { AccountsController } from "./accounts.controller";
 import { buildAccountsRoutes } from "./accounts.routes";
 import { AddressesController } from "./addresses/addresses.controller";
 
-export function buildAccountsModule(dataSource: DataSource): Router {
+export interface AccountsModule {
+  router: Router;
+  registerUserForCheckout: RegisterUserForCheckout;
+  loginUser: LoginUser;
+}
+
+export function buildAccountsModule(dataSource: DataSource): AccountsModule {
   const userRepository = new TypeOrmUserRepository(dataSource);
   const emailVerificationTokenRepository = new TypeOrmEmailVerificationTokenRepository(dataSource);
   const passwordResetTokenRepository = new TypeOrmPasswordResetTokenRepository(dataSource);
@@ -59,6 +66,12 @@ export function buildAccountsModule(dataSource: DataSource): Router {
     emailSender,
   );
   const loginUser = new LoginUser(userRepository, refreshTokenRepository, passwordHasher, tokenService);
+  const registerUserForCheckout = new RegisterUserForCheckout(
+    userRepository,
+    emailVerificationTokenRepository,
+    passwordHasher,
+    emailSender,
+  );
   const refreshAccessToken = new RefreshAccessToken(userRepository, refreshTokenRepository, tokenService);
   const requestPasswordReset = new RequestPasswordReset(
     userRepository,
@@ -120,7 +133,11 @@ export function buildAccountsModule(dataSource: DataSource): Router {
 
   const authenticate = buildAuthenticate(tokenService);
 
-  return buildAccountsRoutes(controller, addressesController, authenticate);
+  return {
+    router: buildAccountsRoutes(controller, addressesController, authenticate),
+    registerUserForCheckout,
+    loginUser,
+  };
 }
 
 function requireJwtSecret(): string {
