@@ -1,10 +1,13 @@
 import { RequestHandler, Router } from "express";
 import { asyncHandler } from "../../../shared-kernel/infrastructure/http/async-handler";
 import { AccountsController } from "./accounts.controller";
-import { uploadAvatar } from "./upload-avatar.middleware";
+import { AddressesController } from "./addresses/addresses.controller";
+import { buildAddressesRoutes } from "./addresses/addresses.routes";
+import { uploadAvatar } from "./profile/upload-avatar.middleware";
 
 export function buildAccountsRoutes(
   controller: AccountsController,
+  addressesController: AddressesController,
   authenticate: RequestHandler,
 ): Router {
   const router = Router();
@@ -17,6 +20,7 @@ export function buildAccountsRoutes(
   router.post("/forgot-password", asyncHandler(controller.requestPasswordReset));
   router.post("/reset-password", asyncHandler(controller.resetPasswordWithToken));
   router.patch("/me", authenticate, uploadAvatar, asyncHandler(controller.updateProfile));
+  router.use("/me/addresses", buildAddressesRoutes(addressesController, authenticate));
 
   return router;
 }
