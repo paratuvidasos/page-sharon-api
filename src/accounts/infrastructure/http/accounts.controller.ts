@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { DeleteAccount } from "../../application/use-cases/profile/DeleteAccount";
 import { LoginUser } from "../../application/use-cases/session/LoginUser";
 import { LogoutAllSessions } from "../../application/use-cases/session/LogoutAllSessions";
 import { LogoutUser } from "../../application/use-cases/session/LogoutUser";
@@ -17,6 +18,7 @@ import "./schemas/session/refresh-token.schema";
 import "./schemas/session/logout.schema";
 import "./schemas/session/logout-all.schema";
 import "./schemas/profile/get-profile.schema";
+import { DeleteAccountRequestSchema } from "./schemas/profile/delete-account.schema";
 import { RegisterRequestSchema } from "./schemas/registration/register.schema";
 import { RequestPasswordResetRequestSchema } from "./schemas/password-reset/request-password-reset.schema";
 import { ResendVerificationEmailRequestSchema } from "./schemas/registration/resend-verification-email.schema";
@@ -48,6 +50,7 @@ export class AccountsController {
     private readonly logoutUser: LogoutUser,
     private readonly logoutAllSessionsUseCase: LogoutAllSessions,
     private readonly getProfileUseCase: GetProfile,
+    private readonly deleteAccountUseCase: DeleteAccount,
   ) {}
 
   private setRefreshTokenCookie(res: Response, token: string, expiresAt: Date): void {
@@ -184,5 +187,21 @@ export class AccountsController {
     });
 
     res.status(200).json(result);
+  };
+
+  deleteAccount = async (req: Request, res: Response): Promise<void> => {
+    if (!req.authUser) {
+      throw new UnauthorizedException();
+    }
+
+    const input = DeleteAccountRequestSchema.parse(req.body);
+    await this.deleteAccountUseCase.execute({
+      userId: req.authUser.sub,
+      password: input.password,
+      reason: input.reason,
+    });
+
+    this.clearRefreshTokenCookie(res);
+    res.status(200).json({ message: "Tu cuenta y tus datos personales fueron eliminados correctamente." });
   };
 }
