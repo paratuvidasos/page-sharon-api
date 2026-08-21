@@ -24,8 +24,12 @@ async function bootstrap(): Promise<void> {
     res.json({ status: "ok" });
   });
 
-  app.use("/api/v1/accounts", buildAccountsModule(AppDataSource));
-  app.use("/api/v1/orders", buildOrdersModule(AppDataSource));
+  const accounts = buildAccountsModule(AppDataSource);
+  app.use("/api/v1/accounts", accounts.router);
+  app.use(
+    "/api/v1/orders",
+    buildOrdersModule(AppDataSource, accounts.registerUserForCheckout, accounts.loginUser),
+  );
 
   app.get("/api/docs.json", (_req, res) => {
     res.json(getOpenApiDocument());
