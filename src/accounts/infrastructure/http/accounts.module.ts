@@ -2,6 +2,7 @@ import { Router } from "express";
 import { DataSource } from "typeorm";
 import { buildEmailSender } from "../../../shared-kernel/infrastructure/email/build-email-sender";
 import { RegisterUser } from "../../application/use-cases/RegisterUser";
+import { ResendVerificationEmail } from "../../application/use-cases/ResendVerificationEmail";
 import { VerifyEmail } from "../../application/use-cases/VerifyEmail";
 import { BcryptPasswordHasher } from "../security/BcryptPasswordHasher";
 import { TypeOrmEmailVerificationTokenRepository } from "../persistence/typeorm-email-verification-token.repository";
@@ -22,8 +23,13 @@ export function buildAccountsModule(dataSource: DataSource): Router {
     emailSender,
   );
   const verifyEmail = new VerifyEmail(userRepository, emailVerificationTokenRepository);
+  const resendVerificationEmail = new ResendVerificationEmail(
+    userRepository,
+    emailVerificationTokenRepository,
+    emailSender,
+  );
 
-  const controller = new AccountsController(registerUser, verifyEmail);
+  const controller = new AccountsController(registerUser, verifyEmail, resendVerificationEmail);
 
   return buildAccountsRoutes(controller);
 }
