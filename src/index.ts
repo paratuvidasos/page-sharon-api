@@ -5,6 +5,7 @@ import express from "express";
 import swaggerUi from "swagger-ui-express";
 import { buildAccountsModule } from "./accounts/infrastructure/http/accounts.module";
 import { buildOrdersModule } from "./orders/infrastructure/http/orders.module";
+import { buildWishlistModule } from "./wishlist/infrastructure/http/wishlist.module";
 import { AppDataSource } from "./shared-kernel/infrastructure/persistence/data-source";
 import { errorHandler } from "./shared-kernel/infrastructure/http/error-handler";
 import { getOpenApiDocument } from "./shared-kernel/infrastructure/swagger/registry";
@@ -30,6 +31,7 @@ async function bootstrap(): Promise<void> {
     "/api/v1/orders",
     buildOrdersModule(AppDataSource, accounts.registerUserForCheckout, accounts.loginUser),
   );
+  app.use("/api/v1/wishlist", buildWishlistModule(AppDataSource));
 
   app.get("/api/docs.json", (_req, res) => {
     res.json(getOpenApiDocument());
