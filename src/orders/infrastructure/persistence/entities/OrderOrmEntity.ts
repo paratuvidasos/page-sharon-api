@@ -17,8 +17,15 @@ export class OrderOrmEntity {
   @PrimaryColumn("uuid", { default: () => "uuidv7()" })
   id!: string;
 
-  @Column({ name: "user_id", type: "uuid" })
-  userId!: string;
+  @Column({ name: "user_id", type: "uuid", nullable: true })
+  userId!: string | null;
+
+  // Correo del invitado que hizo el pedido sin crear cuenta; permite
+  // rastrearlo sin login. Mutuamente excluyente con user_id (ver CHECK
+  // ck_orders_owner_xor en la migración).
+  @Column({ name: "guest_email", type: "varchar", length: 255, nullable: true })
+  @Index("ix_orders_guest_email")
+  guestEmail!: string | null;
 
   @Column({ name: "order_number", type: "varchar", length: 30, unique: true })
   orderNumber!: string;
