@@ -6,7 +6,7 @@ import { InvalidCredentialsException } from "../../../domain/exceptions/session/
 import { RefreshToken } from "../../../domain/entities/session/RefreshToken";
 import { UserRole } from "../../../domain/enums/UserRole";
 import { PasswordHasher } from "../../../domain/ports/PasswordHasher";
-import { TokenService } from "../../../domain/ports/TokenService";
+import { TokenService } from "../../../../shared-kernel/domain/ports/TokenService";
 import { RefreshTokenRepository } from "../../../domain/repositories/session/RefreshTokenRepository";
 import { UserRepository } from "../../../domain/repositories/UserRepository";
 import { Email } from "../../../domain/value-objects/Email";

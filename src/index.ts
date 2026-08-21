@@ -4,6 +4,7 @@ import cors from "cors";
 import express from "express";
 import swaggerUi from "swagger-ui-express";
 import { buildAccountsModule } from "./accounts/infrastructure/http/accounts.module";
+import { buildOrdersModule } from "./orders/infrastructure/http/orders.module";
 import { AppDataSource } from "./shared-kernel/infrastructure/persistence/data-source";
 import { errorHandler } from "./shared-kernel/infrastructure/http/error-handler";
 import { getOpenApiDocument } from "./shared-kernel/infrastructure/swagger/registry";
@@ -24,6 +25,7 @@ async function bootstrap(): Promise<void> {
   });
 
   app.use("/api/v1/accounts", buildAccountsModule(AppDataSource));
+  app.use("/api/v1/orders", buildOrdersModule(AppDataSource));
 
   app.get("/api/docs.json", (_req, res) => {
     res.json(getOpenApiDocument());

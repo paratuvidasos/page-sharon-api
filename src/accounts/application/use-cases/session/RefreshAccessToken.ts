@@ -4,7 +4,7 @@ import { AccountInactiveException } from "../../../domain/exceptions/session/Acc
 import { InvalidRefreshTokenException } from "../../../domain/exceptions/session/InvalidRefreshTokenException";
 import { RefreshToken } from "../../../domain/entities/session/RefreshToken";
 import { UserRole } from "../../../domain/enums/UserRole";
-import { TokenService } from "../../../domain/ports/TokenService";
+import { TokenService } from "../../../../shared-kernel/domain/ports/TokenService";
 import { RefreshTokenRepository } from "../../../domain/repositories/session/RefreshTokenRepository";
 import { UserRepository } from "../../../domain/repositories/UserRepository";
 import { ACCESS_TOKEN_TTL_MINUTES } from "../../session-policy";

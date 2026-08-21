@@ -1,4 +1,4 @@
-import { DomainException } from "../../../shared-kernel/domain/exceptions/DomainException";
+import { DomainException } from "./DomainException";
 
 export class UnauthorizedException extends DomainException {
   readonly code = "UNAUTHORIZED";

@@ -1,6 +1,6 @@
 import { NextFunction, Request, Response } from "express";
-import { AccessTokenPayload, TokenService } from "../../../domain/ports/TokenService";
-import { UnauthorizedException } from "../../../domain/exceptions/UnauthorizedException";
+import { UnauthorizedException } from "../../domain/exceptions/UnauthorizedException";
+import { AccessTokenPayload, TokenService } from "../../domain/ports/TokenService";
 
 declare global {
   namespace Express {

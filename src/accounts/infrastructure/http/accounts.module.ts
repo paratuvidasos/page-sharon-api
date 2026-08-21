@@ -1,6 +1,8 @@
 import { Router } from "express";
 import { DataSource } from "typeorm";
 import { buildEmailSender } from "../../../shared-kernel/infrastructure/email/build-email-sender";
+import { buildAuthenticate } from "../../../shared-kernel/infrastructure/http/authenticate.middleware";
+import { JwtTokenService } from "../../../shared-kernel/infrastructure/security/JwtTokenService";
 import { LocalFileStorage } from "../../../shared-kernel/infrastructure/storage/LocalFileStorage";
 import { AddAddress } from "../../application/use-cases/addresses/AddAddress";
 import { ArchiveAddress } from "../../application/use-cases/addresses/ArchiveAddress";
@@ -18,7 +20,6 @@ import { UpdateAddress } from "../../application/use-cases/addresses/UpdateAddre
 import { UpdateProfile } from "../../application/use-cases/profile/UpdateProfile";
 import { VerifyEmail } from "../../application/use-cases/registration/VerifyEmail";
 import { BcryptPasswordHasher } from "../security/BcryptPasswordHasher";
-import { JwtTokenService } from "../security/JwtTokenService";
 import { TypeOrmEmailVerificationTokenRepository } from "../persistence/registration/typeorm-email-verification-token.repository";
 import { TypeOrmPasswordResetTokenRepository } from "../persistence/password-reset/typeorm-password-reset-token.repository";
 import { TypeOrmRefreshTokenRepository } from "../persistence/session/typeorm-refresh-token.repository";
@@ -26,7 +27,6 @@ import { TypeOrmUserRepository } from "../persistence/typeorm-user.repository";
 import { AccountsController } from "./accounts.controller";
 import { buildAccountsRoutes } from "./accounts.routes";
 import { AddressesController } from "./addresses/addresses.controller";
-import { buildAuthenticate } from "./session/authenticate.middleware";
 
 export function buildAccountsModule(dataSource: DataSource): Router {
   const userRepository = new TypeOrmUserRepository(dataSource);
