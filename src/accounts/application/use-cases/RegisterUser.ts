@@ -52,6 +52,7 @@ export class RegisterUser {
       firstName: input.firstName,
       lastName: input.lastName,
       phone: null,
+      avatarUrl: null,
       role: UserRole.CUSTOMER,
       status: UserStatus.ACTIVE,
       emailVerifiedAt: null,

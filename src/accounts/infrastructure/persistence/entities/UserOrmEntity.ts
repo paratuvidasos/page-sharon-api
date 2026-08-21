@@ -36,6 +36,9 @@ export class UserOrmEntity {
   @Column({ type: "varchar", length: 30, nullable: true })
   phone!: string | null;
 
+  @Column({ name: "avatar_url", type: "varchar", length: 500, nullable: true })
+  avatarUrl!: string | null;
+
   @Column({ type: "enum", enum: UserRole, default: UserRole.CUSTOMER })
   role!: UserRole;
 
