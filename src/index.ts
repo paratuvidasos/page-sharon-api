@@ -28,10 +28,10 @@ async function bootstrap(): Promise<void> {
 
   const accounts = buildAccountsModule(AppDataSource);
   app.use("/api/v1/accounts", accounts.router);
-  app.use(
-    "/api/v1/orders",
-    buildOrdersModule(AppDataSource, accounts.registerUserForCheckout, accounts.loginUser),
-  );
+
+  const orders = buildOrdersModule(AppDataSource, accounts.registerUserForCheckout, accounts.loginUser);
+  app.use("/api/v1/orders", orders.router);
+
   app.use("/api/v1/wishlist", buildWishlistModule(AppDataSource));
 
   const catalog = buildCatalogModule(AppDataSource);
