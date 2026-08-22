@@ -4,6 +4,7 @@ import cors from "cors";
 import express from "express";
 import swaggerUi from "swagger-ui-express";
 import { buildAccountsModule } from "./accounts/infrastructure/http/accounts.module";
+import { buildAftersalesModule } from "./aftersales/infrastructure/http/aftersales.module";
 import { buildCatalogModule } from "./catalog/infrastructure/http/catalog.module";
 import { buildOrdersModule } from "./orders/infrastructure/http/orders.module";
 import { buildWishlistModule } from "./wishlist/infrastructure/http/wishlist.module";
@@ -34,7 +35,10 @@ async function bootstrap(): Promise<void> {
 
   app.use("/api/v1/wishlist", buildWishlistModule(AppDataSource));
 
-  const catalog = buildCatalogModule(AppDataSource);
+  const aftersales = buildAftersalesModule(AppDataSource, orders.hasUserPurchasedProduct);
+  app.use("/api/v1/products/:productId/reviews", aftersales.reviewsRouter);
+
+  const catalog = buildCatalogModule(AppDataSource, aftersales.getRatingSummaryForProducts);
   app.use("/api/v1/products", catalog.productsRouter);
   app.use("/api/v1/categories", catalog.categoriesRouter);
 
