@@ -4,6 +4,7 @@ import cors from "cors";
 import express from "express";
 import swaggerUi from "swagger-ui-express";
 import { buildAccountsModule } from "./accounts/infrastructure/http/accounts.module";
+import { buildCatalogModule } from "./catalog/infrastructure/http/catalog.module";
 import { buildOrdersModule } from "./orders/infrastructure/http/orders.module";
 import { buildWishlistModule } from "./wishlist/infrastructure/http/wishlist.module";
 import { AppDataSource } from "./shared-kernel/infrastructure/persistence/data-source";
@@ -32,6 +33,10 @@ async function bootstrap(): Promise<void> {
     buildOrdersModule(AppDataSource, accounts.registerUserForCheckout, accounts.loginUser),
   );
   app.use("/api/v1/wishlist", buildWishlistModule(AppDataSource));
+
+  const catalog = buildCatalogModule(AppDataSource);
+  app.use("/api/v1/products", catalog.productsRouter);
+  app.use("/api/v1/categories", catalog.categoriesRouter);
 
   app.get("/api/docs.json", (_req, res) => {
     res.json(getOpenApiDocument());
