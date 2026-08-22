@@ -23,7 +23,7 @@ export function buildOrdersModule(
   const orderQueryRepository = new TypeOrmOrderQueryRepository(dataSource);
   const orderRepository = new TypeOrmOrderRepository(dataSource);
   const getOrderHistory = new GetOrderHistory(orderQueryRepository);
-  const placeOrder = new PlaceOrder(orderRepository, registerUserForCheckout, loginUser);
+  const placeOrder = new PlaceOrder(orderRepository, registerUserForCheckout, loginUser, domainEventBus);
   const controller = new OrdersController(getOrderHistory, placeOrder);
 
   const anonymizeUserOrders = new AnonymizeUserOrders(orderRepository);
