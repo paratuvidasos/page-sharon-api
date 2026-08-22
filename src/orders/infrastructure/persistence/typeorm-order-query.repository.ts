@@ -1,4 +1,5 @@
 import { DataSource, In, Repository } from "typeorm";
+import { OrderStatus } from "../../domain/enums/OrderStatus";
 import {
   OrderHistoryFilter,
   OrderHistoryItem,
@@ -6,6 +7,15 @@ import {
   OrderHistoryPagination,
   OrderQueryRepository,
 } from "../../domain/repositories/OrderQueryRepository";
+
+// No como allowlist de estados "confirmados": hoy no existe ningún flujo de
+// pago/cumplimiento implementado (el módulo `payments` está vacío y ningún
+// caso de uso mueve un pedido más allá de PENDING), así que un pedido recién
+// colocado se queda en PENDING para siempre en la práctica. Excluir solo
+// CANCELLED/REFUNDED es lo único que no deja "compra verificada" inalcanzable
+// hoy, y sigue siendo correcto cuando exista un flujo de pago real (los
+// pedidos madurarán a PAID/DELIVERED sin tocar esta regla).
+const NOT_PURCHASED_STATUSES = [OrderStatus.CANCELLED, OrderStatus.REFUNDED];
 import { OrderItemOrmEntity } from "./entities/OrderItemOrmEntity";
 import { OrderOrmEntity } from "./entities/OrderOrmEntity";
 
@@ -67,6 +77,18 @@ export class TypeOrmOrderQueryRepository implements OrderQueryRepository {
       items: orders.map((order) => toOrderHistoryItem(order, itemsByOrderId.get(order.id) ?? [])),
       total,
     };
+  }
+
+  async hasUserPurchasedProduct(userId: string, productId: string): Promise<boolean> {
+    const match = await this.orderItemRepository
+      .createQueryBuilder("item")
+      .innerJoin("orders", "order", "order.id = item.orderId")
+      .where("order.userId = :userId", { userId })
+      .andWhere("item.productId = :productId", { productId })
+      .andWhere("order.status NOT IN (:...statuses)", { statuses: NOT_PURCHASED_STATUSES })
+      .getOne();
+
+    return match !== null;
   }
 }
 
