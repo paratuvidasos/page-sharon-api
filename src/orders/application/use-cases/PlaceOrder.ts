@@ -1,5 +1,7 @@
 import { RegisterUserForCheckout } from "../../../accounts/application/use-cases/registration/RegisterUserForCheckout";
 import { LoginUser, LoginUserResult } from "../../../accounts/application/use-cases/session/LoginUser";
+import { OrderPlaced } from "../../../shared-kernel/domain/events/OrderPlaced";
+import { DomainEventPublisher } from "../../../shared-kernel/domain/ports/DomainEventPublisher";
 import { generateId } from "../../../shared-kernel/infrastructure/ids/generate-id";
 import { Order, ShippingAddressSnapshot } from "../../domain/entities/Order";
 import { OrderStatus } from "../../domain/enums/OrderStatus";
@@ -67,6 +69,7 @@ export class PlaceOrder {
     private readonly orderRepository: OrderRepository,
     private readonly registerUserForCheckout: RegisterUserForCheckout,
     private readonly loginUser: LoginUser,
+    private readonly domainEventPublisher: DomainEventPublisher,
   ) {}
 
   async execute(input: PlaceOrderInput): Promise<PlaceOrderResult> {
@@ -118,6 +121,13 @@ export class PlaceOrder {
     await this.orderRepository.save(order);
 
     const props = order.toProps();
+
+    await this.domainEventPublisher.publish(
+      new OrderPlaced(
+        props.id,
+        props.items.map((item) => ({ productId: item.productId, quantity: item.quantity })),
+      ),
+    );
 
     return {
       order: {
