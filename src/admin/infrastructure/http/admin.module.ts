@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { SetProductFeatured } from "../../../catalog/application/use-cases/SetProductFeatured";
+import { CreateCoupon } from "../../../cart/application/use-cases/CreateCoupon";
 import { buildAuthenticate } from "../../../shared-kernel/infrastructure/http/authenticate.middleware";
 import { requireRole } from "../../../shared-kernel/infrastructure/http/require-role.middleware";
 import { JwtTokenService } from "../../../shared-kernel/infrastructure/security/JwtTokenService";
@@ -9,13 +10,14 @@ import { buildAdminRoutes } from "./admin.routes";
 const ADMIN_ROLE = "ADMIN";
 
 /**
- * Módulo mínimo: solo lo necesario para [0022] (marcar producto como
- * destacado). No incluye CRUD de catálogo — no está en el backlog
- * [0013]-[0022]. No tiene tabla propia: llama al caso de uso que expone
- * `catalog` (ver regla 2 del CLAUDE.md del repo), nunca su repositorio.
+ * Módulo mínimo: [0022] (marcar producto como destacado) y el alta de
+ * cupones para [0027] (no hay CRUD de catálogo ni administración de
+ * cupones completa en el backlog). No tiene tabla propia: llama a los
+ * casos de uso que exponen `catalog`/`cart` (ver regla 2 del CLAUDE.md del
+ * repo), nunca sus repositorios.
  */
-export function buildAdminModule(setProductFeatured: SetProductFeatured): Router {
-  const controller = new AdminController(setProductFeatured);
+export function buildAdminModule(setProductFeatured: SetProductFeatured, createCoupon: CreateCoupon): Router {
+  const controller = new AdminController(setProductFeatured, createCoupon);
 
   const tokenService = new JwtTokenService(requireJwtSecret());
   const authenticate = buildAuthenticate(tokenService);
