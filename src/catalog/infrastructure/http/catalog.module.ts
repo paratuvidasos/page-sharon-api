@@ -3,6 +3,7 @@ import { DataSource } from "typeorm";
 import { OrderPlaced } from "../../../shared-kernel/domain/events/OrderPlaced";
 import { domainEventBus } from "../../../shared-kernel/infrastructure/events/InMemoryDomainEventBus";
 import { AutocompleteProducts } from "../../application/use-cases/AutocompleteProducts";
+import { GetCartProductSnapshots } from "../../application/use-cases/GetCartProductSnapshots";
 import { GetProductDetail } from "../../application/use-cases/GetProductDetail";
 import { GetProductFilterFacets } from "../../application/use-cases/GetProductFilterFacets";
 import { ListCategories } from "../../application/use-cases/ListCategories";
@@ -23,6 +24,7 @@ export interface CatalogModule {
   productsRouter: Router;
   categoriesRouter: Router;
   setProductFeatured: SetProductFeatured;
+  getCartProductSnapshots: GetCartProductSnapshots;
 }
 
 export function buildCatalogModule(
@@ -46,6 +48,7 @@ export function buildCatalogModule(
   );
   const listFeaturedProducts = new ListFeaturedProducts(productQueryRepository, ratingSummaryPort);
   const setProductFeatured = new SetProductFeatured(productRepository);
+  const getCartProductSnapshots = new GetCartProductSnapshots(productQueryRepository);
 
   const recordProductSale = new RecordProductSale(productRepository);
   domainEventBus.subscribe(OrderPlaced.eventName, async (event) => {
@@ -67,5 +70,6 @@ export function buildCatalogModule(
     productsRouter: buildProductsRoutes(controller),
     categoriesRouter: buildCategoriesRoutes(controller),
     setProductFeatured,
+    getCartProductSnapshots,
   };
 }

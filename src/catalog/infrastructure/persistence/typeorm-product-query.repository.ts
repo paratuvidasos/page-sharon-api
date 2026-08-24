@@ -12,6 +12,7 @@ import {
   ProductListPagination,
   ProductQueryRepository,
   ProductSuggestion,
+  ProductVariantSnapshot,
   RelatedProductsFilter,
 } from "../../domain/repositories/ProductQueryRepository";
 import { ProductOrmEntity } from "./entities/ProductOrmEntity";
@@ -190,6 +191,52 @@ export class TypeOrmProductQueryRepository implements ProductQueryRepository {
     const maxStockByProductId = await this.getMaxStockByProductId(products.map((product) => product.id));
 
     return products.map((product) => this.toListItem(product, maxStockByProductId.get(product.id) ?? 0));
+  }
+
+  async findVariantSnapshots(variantIds: string[]): Promise<ProductVariantSnapshot[]> {
+    if (variantIds.length === 0) {
+      return [];
+    }
+
+    const rows = await this.variantOrmRepository
+      .createQueryBuilder("variant")
+      .innerJoin("products", "product", "product.id = variant.productId")
+      .select("variant.id", "variantId")
+      .addSelect("product.id", "productId")
+      .addSelect("product.name", "productName")
+      .addSelect("product.status", "status")
+      .addSelect("product.images", "images")
+      .addSelect("variant.imageUrl", "variantImageUrl")
+      .addSelect("variant.size", "size")
+      .addSelect("variant.scent", "scent")
+      .addSelect("variant.color", "color")
+      .addSelect("COALESCE(variant.priceOverride, product.basePrice)", "unitPrice")
+      .addSelect("variant.stockQuantity", "stockQuantity")
+      .where("variant.id IN (:...variantIds)", { variantIds })
+      .getRawMany<{
+        variantId: string;
+        productId: string;
+        productName: string;
+        status: ProductStatus;
+        images: string[];
+        variantImageUrl: string | null;
+        size: string | null;
+        scent: string | null;
+        color: string | null;
+        unitPrice: string;
+        stockQuantity: number;
+      }>();
+
+    return rows.map((row) => ({
+      productId: row.productId,
+      variantId: row.variantId,
+      productName: row.productName,
+      variantLabel: [row.size, row.scent, row.color].filter((part): part is string => Boolean(part)).join(", ") || null,
+      thumbnailUrl: row.variantImageUrl ?? row.images?.[0] ?? null,
+      unitPrice: Number(row.unitPrice),
+      stockQuantity: Number(row.stockQuantity),
+      isActive: row.status === ProductStatus.ACTIVE,
+    }));
   }
 
   private applySort(qb: SelectQueryBuilder<ProductOrmEntity>, sort: ProductSort | undefined): void {

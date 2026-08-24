@@ -72,6 +72,17 @@ export interface RelatedProductsFilter {
   limit: number;
 }
 
+export interface ProductVariantSnapshot {
+  productId: string;
+  variantId: string;
+  productName: string;
+  variantLabel: string | null;
+  thumbnailUrl: string | null;
+  unitPrice: number;
+  stockQuantity: number;
+  isActive: boolean;
+}
+
 /**
  * Read model de solo lectura para el listado de catálogo — devuelve DTOs
  * planos en vez del agregado `Product` completo (ver sección "Queries" del
@@ -115,4 +126,13 @@ export interface ProductQueryRepository {
    * a invalidar.
    */
   listFeaturedAndOnSale(limit: number): Promise<ProductListItem[]>;
+
+  /**
+   * Puerto consumido por `cart` a través de `GetCartProductSnapshots` (ver
+   * regla 2 del CLAUDE.md del repo — `cart` nunca importa la
+   * infraestructura de `catalog`): nombre, imagen, precio efectivo, stock
+   * y estado activo por variante, para validar el carrito contra el
+   * catálogo vigente.
+   */
+  findVariantSnapshots(variantIds: string[]): Promise<ProductVariantSnapshot[]>;
 }
