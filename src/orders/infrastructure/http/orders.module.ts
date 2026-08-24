@@ -9,22 +9,29 @@ import { buildOptionalAuthenticate } from "../../../shared-kernel/infrastructure
 import { JwtTokenService } from "../../../shared-kernel/infrastructure/security/JwtTokenService";
 import { AnonymizeUserOrders } from "../../application/use-cases/AnonymizeUserOrders";
 import { GetOrderHistory } from "../../application/use-cases/GetOrderHistory";
+import { HasUserPurchasedProduct } from "../../application/use-cases/HasUserPurchasedProduct";
 import { PlaceOrder } from "../../application/use-cases/PlaceOrder";
 import { TypeOrmOrderQueryRepository } from "../persistence/typeorm-order-query.repository";
 import { TypeOrmOrderRepository } from "../persistence/typeorm-order.repository";
 import { OrdersController } from "./orders.controller";
 import { buildOrdersRoutes } from "./orders.routes";
 
+export interface OrdersModule {
+  router: Router;
+  hasUserPurchasedProduct: HasUserPurchasedProduct;
+}
+
 export function buildOrdersModule(
   dataSource: DataSource,
   registerUserForCheckout: RegisterUserForCheckout,
   loginUser: LoginUser,
-): Router {
+): OrdersModule {
   const orderQueryRepository = new TypeOrmOrderQueryRepository(dataSource);
   const orderRepository = new TypeOrmOrderRepository(dataSource);
   const getOrderHistory = new GetOrderHistory(orderQueryRepository);
-  const placeOrder = new PlaceOrder(orderRepository, registerUserForCheckout, loginUser);
+  const placeOrder = new PlaceOrder(orderRepository, registerUserForCheckout, loginUser, domainEventBus);
   const controller = new OrdersController(getOrderHistory, placeOrder);
+  const hasUserPurchasedProduct = new HasUserPurchasedProduct(orderQueryRepository);
 
   const anonymizeUserOrders = new AnonymizeUserOrders(orderRepository);
   domainEventBus.subscribe(UserAccountDeleted.eventName, async (event) => {
@@ -35,7 +42,10 @@ export function buildOrdersModule(
   const authenticate = buildAuthenticate(tokenService);
   const optionalAuthenticate = buildOptionalAuthenticate(tokenService);
 
-  return buildOrdersRoutes(controller, authenticate, optionalAuthenticate);
+  return {
+    router: buildOrdersRoutes(controller, authenticate, optionalAuthenticate),
+    hasUserPurchasedProduct,
+  };
 }
 
 function requireJwtSecret(): string {

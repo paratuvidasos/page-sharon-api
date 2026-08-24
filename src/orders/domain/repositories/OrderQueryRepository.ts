@@ -63,4 +63,16 @@ export interface OrderQueryRepository {
     filter: OrderHistoryFilter,
     pagination: OrderHistoryPagination,
   ): Promise<OrderHistoryPage>;
+
+  /**
+   * [0021]: puerto que `aftersales` consume (vía el caso de uso
+   * `HasUserPurchasedProduct` expuesto por `orders`) para exigir compra
+   * verificada antes de aceptar una reseña — ver regla 2 del CLAUDE.md del
+   * repo. Cuenta cualquier pedido que no esté cancelado/reembolsado (no solo
+   * los "confirmados" tipo PAID/DELIVERED): hoy no existe ningún flujo de
+   * pago/cumplimiento implementado, así que un pedido recién colocado se
+   * queda en PENDING indefinidamente — restringir a estados posteriores
+   * dejaría "compra verificada" inalcanzable en la práctica.
+   */
+  hasUserPurchasedProduct(userId: string, productId: string): Promise<boolean>;
 }
