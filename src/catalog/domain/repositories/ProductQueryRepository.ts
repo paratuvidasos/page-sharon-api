@@ -83,6 +83,11 @@ export interface ProductVariantSnapshot {
   unitPrice: number;
   stockQuantity: number;
   isActive: boolean;
+  /** [0048]: medidas del bulto, para que `shipping` pueda cotizar con la transportadora. */
+  weightGrams: number;
+  lengthCm: number | null;
+  widthCm: number | null;
+  heightCm: number | null;
 }
 
 /**

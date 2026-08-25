@@ -213,6 +213,10 @@ export class TypeOrmProductQueryRepository implements ProductQueryRepository {
       .addSelect("variant.color", "color")
       .addSelect("COALESCE(variant.priceOverride, product.basePrice)", "unitPrice")
       .addSelect("variant.stockQuantity", "stockQuantity")
+      .addSelect("variant.weightGrams", "weightGrams")
+      .addSelect("variant.lengthCm", "lengthCm")
+      .addSelect("variant.widthCm", "widthCm")
+      .addSelect("variant.heightCm", "heightCm")
       .where("variant.id IN (:...variantIds)", { variantIds })
       .getRawMany<{
         variantId: string;
@@ -227,6 +231,10 @@ export class TypeOrmProductQueryRepository implements ProductQueryRepository {
         color: string | null;
         unitPrice: string;
         stockQuantity: number;
+        weightGrams: number;
+        lengthCm: string | null;
+        widthCm: string | null;
+        heightCm: string | null;
       }>();
 
     return rows.map((row) => ({
@@ -239,6 +247,10 @@ export class TypeOrmProductQueryRepository implements ProductQueryRepository {
       unitPrice: Number(row.unitPrice),
       stockQuantity: Number(row.stockQuantity),
       isActive: row.status === ProductStatus.ACTIVE,
+      weightGrams: Number(row.weightGrams),
+      lengthCm: row.lengthCm != null ? Number(row.lengthCm) : null,
+      widthCm: row.widthCm != null ? Number(row.widthCm) : null,
+      heightCm: row.heightCm != null ? Number(row.heightCm) : null,
     }));
   }
 

@@ -43,6 +43,21 @@ export class ProductVariantOrmEntity {
   @Column({ name: "image_url", type: "varchar", length: 500, nullable: true })
   imageUrl!: string | null;
 
+  // [0048]: datos del bulto para cotizar con la transportadora. Van en la
+  // variante y no en el producto porque dos presentaciones del mismo producto
+  // pesan distinto. Cero/NULL = todavía no se midió.
+  @Column({ name: "weight_grams", type: "int", default: 0 })
+  weightGrams!: number;
+
+  @Column({ name: "length_cm", type: "numeric", precision: 6, scale: 2, nullable: true })
+  lengthCm!: string | null;
+
+  @Column({ name: "width_cm", type: "numeric", precision: 6, scale: 2, nullable: true })
+  widthCm!: string | null;
+
+  @Column({ name: "height_cm", type: "numeric", precision: 6, scale: 2, nullable: true })
+  heightCm!: string | null;
+
   @CreateDateColumn({ name: "created_at", type: "timestamptz" })
   createdAt!: Date;
 }

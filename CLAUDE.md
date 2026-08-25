@@ -155,7 +155,7 @@ Las historias de usuario y sus subtasks viven en ClickUp (Space "sharon"), numer
 * Herramienta exacta de generación de Swagger (`zod-to-openapi` asumido; confirmar si el equipo prefiere `swagger-jsdoc` u otra).
 * Estrategia de paginación (cursor vs offset) para el contrato común de `shared-kernel`.
 * Pasarela(s) de pago a integrar.
-* Transportadora(s) de envío a integrar.
+* Transportadora(s) de envío a integrar. El punto de integración ya existe desde [0048] (`shipping/domain/ports/CarrierRateProviderPort` + `HttpCarrierRateProvider`, que mapea un contrato JSON genérico); lo pendiente es elegir el proveedor y ajustar ese adaptador a su contrato real. Sin credenciales, todo se cotiza con la tarifa de respaldo de `shipping_rates`.
 * Alcance final de multi-moneda/multi-idioma (marcado como "a futuro" en el backlog del frontend).
 
 ## Comandos (ajustar según package.json real — proyecto aún sin scaffolding)
