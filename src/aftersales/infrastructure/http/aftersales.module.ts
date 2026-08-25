@@ -22,7 +22,11 @@ export function buildAftersalesModule(
   const reviewRepository = new TypeOrmReviewRepository(dataSource);
   const reviewQueryRepository = new TypeOrmReviewQueryRepository(dataSource);
 
-  const createReview = new CreateReview(reviewRepository, hasUserPurchasedProduct);
+  const createReview = new CreateReview(
+    reviewRepository,
+    hasUserPurchasedProduct,
+    readRequireVerifiedPurchase(),
+  );
   const getProductReviews = new GetProductReviews(reviewQueryRepository);
   const getRatingSummaryForProducts = new GetRatingSummaryForProducts(reviewQueryRepository);
   const controller = new ReviewsController(createReview, getProductReviews);
@@ -42,4 +46,13 @@ function requireJwtSecret(): string {
     throw new Error("JWT_SECRET no está configurado.");
   }
   return secret;
+}
+
+/**
+ * Apagado por defecto: hoy cualquiera con cuenta puede reseñar. Ver el porqué
+ * en `CreateReview`. Activarlo es poner
+ * `REVIEWS_REQUIRE_VERIFIED_PURCHASE=true` en el entorno.
+ */
+function readRequireVerifiedPurchase(): boolean {
+  return process.env.REVIEWS_REQUIRE_VERIFIED_PURCHASE === "true";
 }

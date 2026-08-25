@@ -23,15 +23,27 @@ export interface HasUserPurchasedProductPort {
 }
 
 /**
- * En vez de guardar reseñas no verificadas y filtrarlas al mostrarlas, la
- * compra verificada es una precondición para crear la reseña — así solo
- * existen reseñas verificadas y no hace falta un estado de moderación
- * aparte (ver "Decisiones de diseño clave" del plan de [0013]-[0022]).
+ * Reseñas: una por persona y producto.
+ *
+ * Exigir compra verificada es opcional y viene **apagado** por defecto. El
+ * negocio ya lleva años operando y buena parte de su clientela compró antes
+ * de que existiera este sistema: exigirlo dejaría fuera justo a quienes más
+ * tienen que contar, porque sus compras no están en esta base de datos.
+ *
+ * Se conserva como interruptor y no se borró el puerto porque la intención es
+ * activarlo más adelante, cuando el histórico de pedidos propios ya sea
+ * representativo.
+ *
+ * Consecuencia a tener presente: el diseño original de [0013]-[0022] no
+ * incluyó estado de moderación precisamente porque toda reseña era, por
+ * construcción, de compra verificada. Con el interruptor apagado eso deja de
+ * ser cierto, y hoy nada distingue una reseña verificada de una que no lo es.
  */
 export class CreateReview {
   constructor(
     private readonly reviewRepository: ReviewRepository,
     private readonly hasUserPurchasedProduct: HasUserPurchasedProductPort,
+    private readonly requireVerifiedPurchase: boolean,
   ) {}
 
   async execute(input: CreateReviewInput): Promise<CreateReviewResult> {
@@ -43,12 +55,16 @@ export class CreateReview {
       throw new DuplicateReviewException();
     }
 
-    const purchased = await this.hasUserPurchasedProduct.execute({
-      userId: input.userId,
-      productId: input.productId,
-    });
-    if (!purchased) {
-      throw new ReviewRequiresVerifiedPurchaseException();
+    // Con el interruptor apagado ni siquiera se consulta: sería una query
+    // contra los pedidos cuyo resultado se iba a ignorar.
+    if (this.requireVerifiedPurchase) {
+      const purchased = await this.hasUserPurchasedProduct.execute({
+        userId: input.userId,
+        productId: input.productId,
+      });
+      if (!purchased) {
+        throw new ReviewRequiresVerifiedPurchaseException();
+      }
     }
 
     const review = Review.create({
