@@ -12,6 +12,12 @@ export interface OrderHistoryFilter {
   status?: OrderStatus;
   dateFrom?: Date;
   dateTo?: Date;
+  /**
+   * [0046]: solo pedidos que ya salieron. Es lo que respalda la pestaña
+   * "envíos" del perfil, que no es lo mismo que el historial de compras: un
+   * pedido pagado que todavía no se despachó no es un envío.
+   */
+  onlyShipped?: boolean;
 }
 
 export interface OrderHistoryPagination {
@@ -39,6 +45,16 @@ export interface OrderHistoryShippingAddress {
   streetLine2: string | null;
 }
 
+/** [0046]: datos del despacho, `null` mientras el pedido no haya salido. */
+export interface OrderHistoryShipment {
+  carrierCode: string;
+  carrierName: string;
+  trackingNumber: string;
+  trackingUrl: string | null;
+  shippedAt: Date;
+  deliveredAt: Date | null;
+}
+
 export interface OrderHistoryItem {
   id: string;
   orderNumber: string;
@@ -51,6 +67,10 @@ export interface OrderHistoryItem {
   paymentMethod: PaymentMethod;
   paymentMethodLabel: string | null;
   shippingAddress: OrderHistoryShippingAddress;
+  /** [0046]: sin el método, el historial no puede decir *cómo* se envió cada pedido. */
+  shippingMethodCode: string;
+  shippingMethodLabel: string;
+  shipment: OrderHistoryShipment | null;
   items: OrderHistoryItemLine[];
 }
 

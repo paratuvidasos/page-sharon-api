@@ -1,5 +1,5 @@
 import { DataSource, In, Repository } from "typeorm";
-import { PURCHASED_ORDER_STATUSES } from "../../domain/enums/OrderStatus";
+import { OrderStatus, PURCHASED_ORDER_STATUSES } from "../../domain/enums/OrderStatus";
 import {
   OrderHistoryFilter,
   OrderHistoryItem,
@@ -48,6 +48,13 @@ export class TypeOrmOrderQueryRepository implements OrderQueryRepository {
     }
     if (filter.dateTo) {
       query.andWhere("order.placedAt <= :dateTo", { dateTo: filter.dateTo });
+    }
+    // [0046]: DELIVERED cuenta como envío — es un envío que ya terminó, no la
+    // ausencia de uno.
+    if (filter.onlyShipped) {
+      query.andWhere("order.status IN (:...shippedStatuses)", {
+        shippedStatuses: [OrderStatus.SHIPPED, OrderStatus.DELIVERED],
+      });
     }
 
     query
@@ -108,6 +115,21 @@ function toOrderHistoryItem(order: OrderOrmEntity, items: OrderItemOrmEntity[]):
     total: Number(order.total),
     paymentMethod: order.paymentMethod,
     paymentMethodLabel: order.paymentMethodLabel,
+    shippingMethodCode: order.shippingMethodCode,
+    shippingMethodLabel: order.shippingMethodLabel,
+    // Las columnas ya vienen en la fila del pedido: no hace falta ninguna
+    // consulta extra para armar esto.
+    shipment:
+      order.trackingNumber && order.shippedAt
+        ? {
+            carrierCode: order.carrierCode ?? "",
+            carrierName: order.carrierName ?? "",
+            trackingNumber: order.trackingNumber,
+            trackingUrl: order.trackingUrl,
+            shippedAt: order.shippedAt,
+            deliveredAt: order.deliveredAt,
+          }
+        : null,
     shippingAddress: {
       recipientName: order.shippingRecipientName,
       phone: order.shippingPhone,
