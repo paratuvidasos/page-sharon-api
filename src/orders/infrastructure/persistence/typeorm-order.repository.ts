@@ -24,6 +24,33 @@ export class TypeOrmOrderRepository implements OrderRepository {
     });
   }
 
+  /**
+   * Solo la fila del pedido. Ver el porqué en `OrderRepository.update`.
+   */
+  async update(order: Order): Promise<void> {
+    const { order: orderOrm } = OrderMapper.toOrm(order);
+    await this.ormRepository.save(orderOrm);
+  }
+
+  async findById(id: string): Promise<Order | null> {
+    return this.findOneBy({ id });
+  }
+
+  async findByOrderNumber(orderNumber: string): Promise<Order | null> {
+    return this.findOneBy({ orderNumber });
+  }
+
+  private async findOneBy(where: { id: string } | { orderNumber: string }): Promise<Order | null> {
+    const orderOrm = await this.ormRepository.findOne({ where });
+    if (!orderOrm) {
+      return null;
+    }
+    const itemsOrm = await this.dataSource
+      .getRepository(OrderItemOrmEntity)
+      .find({ where: { orderId: orderOrm.id } });
+    return OrderMapper.toDomain(orderOrm, itemsOrm);
+  }
+
   async anonymizeShippingSnapshotForUser(userId: string): Promise<void> {
     await this.ormRepository.update(
       { userId },

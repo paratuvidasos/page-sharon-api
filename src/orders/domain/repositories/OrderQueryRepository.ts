@@ -3,6 +3,12 @@ import { PaymentMethod } from "../enums/PaymentMethod";
 
 export interface OrderHistoryFilter {
   userId: string;
+  /**
+   * Correo de la cuenta. Se usa para recuperar los pedidos que la persona
+   * hizo como invitado con ese mismo correo antes de tener sesión: son suyos
+   * aunque no lleven su user_id.
+   */
+  userEmail: string;
   status?: OrderStatus;
   dateFrom?: Date;
   dateTo?: Date;

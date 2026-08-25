@@ -19,7 +19,15 @@ export interface EmailLayoutOptions {
   ctaLabel: string;
   ctaUrl: string;
   footerNote: string;
+  /**
+   * Bloque opcional entre el cuerpo y el botón, para contenido que no cabe en
+   * un párrafo — el resumen de ítems y totales del correo de confirmación
+   * ([0039]). Los correos que no lo usan quedan exactamente igual que antes.
+   */
+  detailsHtml?: string;
 }
+
+export { PALETTE, SERIF_FONT, SANS_FONT };
 
 export function renderEmailLayout(opts: EmailLayoutOptions): string {
   const year = new Date().getFullYear();
@@ -53,6 +61,11 @@ export function renderEmailLayout(opts: EmailLayoutOptions): string {
                 ${opts.bodyHtml}
               </td>
             </tr>
+            ${opts.detailsHtml ? `<tr>
+              <td style="padding:24px 32px 0;">
+                ${opts.detailsHtml}
+              </td>
+            </tr>` : ""}
             <tr>
               <td style="padding:28px 32px 40px; text-align:center;">
                 <a href="${opts.ctaUrl}" style="display:inline-block; background-color:${PALETTE.botanicDeep}; color:${PALETTE.cream}; font-family:${SANS_FONT}; font-size:15px; font-weight:600; text-decoration:none; padding:14px 32px; border-radius:8px;">${opts.ctaLabel}</a>
