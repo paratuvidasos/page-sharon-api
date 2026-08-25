@@ -111,6 +111,29 @@ const ResponseShippingAddressSchema = z.object({
   streetLine2: z.string().nullable(),
 });
 
+/** [0047]: guía y transportadora, una vez despachado el pedido. */
+export const OrderShipmentResponseSchema = z.object({
+  carrierCode: z.string().openapi({ example: "SERVIENTREGA" }),
+  carrierName: z.string().openapi({ example: "Servientrega" }),
+  trackingNumber: z.string().openapi({ example: "1234567890" }),
+  trackingUrl: z.string().nullable().openapi({
+    example: "https://www.servientrega.com/rastreo/1234567890",
+    description: "Enlace de rastreo externo, si la transportadora lo provee.",
+  }),
+  shippedAt: z.string().datetime(),
+  deliveredAt: z.string().datetime().nullable(),
+});
+
+/** [0043]: cada cambio de estado con su fecha, del más antiguo al más reciente. */
+export const OrderStatusChangeResponseSchema = z.object({
+  status: z.nativeEnum(OrderStatus),
+  changedAt: z.string().datetime(),
+  note: z.string().nullable().openapi({
+    example: "1234567890",
+    description: "Detalle del cambio: número de guía, motivo del rechazo, etc.",
+  }),
+});
+
 export const OrderSummaryResponseSchema = z.object({
   id: z.string().uuid(),
   orderNumber: z.string().openapi({ example: "ORD-20260824-AB12CD" }),
@@ -132,6 +155,8 @@ export const OrderSummaryResponseSchema = z.object({
   paymentMethodLabel: z.string().nullable(),
   paymentFailureMessage: z.string().nullable(),
   shippingAddress: ResponseShippingAddressSchema,
+  shipment: OrderShipmentResponseSchema.nullable(),
+  statusHistory: z.array(OrderStatusChangeResponseSchema),
   placedAt: z.string().datetime(),
   paidAt: z.string().datetime().nullable(),
 });
