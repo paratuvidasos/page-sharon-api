@@ -14,11 +14,17 @@ export class OrderMapper {
     orderOrm.orderNumber = props.orderNumber;
     orderOrm.status = props.status;
     orderOrm.currency = props.currency;
+    orderOrm.exchangeRate = props.exchangeRate.toString();
     orderOrm.subtotal = props.subtotal.toFixed(2);
+    orderOrm.couponCode = props.couponCode;
+    orderOrm.discount = props.discount.toFixed(2);
     orderOrm.shippingCost = props.shippingCost.toFixed(2);
+    orderOrm.shippingMethodCode = props.shippingMethodCode;
+    orderOrm.shippingMethodLabel = props.shippingMethodLabel;
     orderOrm.total = props.total.toFixed(2);
     orderOrm.paymentMethod = props.paymentMethod;
     orderOrm.paymentMethodLabel = props.paymentMethodLabel;
+    orderOrm.paymentFailureMessage = props.paymentFailureMessage;
     orderOrm.shippingRecipientName = props.shippingAddress.recipientName;
     orderOrm.shippingPhone = props.shippingAddress.phone;
     orderOrm.shippingCountryCode = props.shippingAddress.countryCode;
@@ -28,12 +34,14 @@ export class OrderMapper {
     orderOrm.shippingStreetLine1 = props.shippingAddress.streetLine1;
     orderOrm.shippingStreetLine2 = props.shippingAddress.streetLine2;
     orderOrm.placedAt = props.placedAt;
+    orderOrm.paidAt = props.paidAt;
 
     const itemsOrm = props.items.map((item) => {
       const itemOrm = new OrderItemOrmEntity();
       itemOrm.id = generateId();
       itemOrm.orderId = props.id;
       itemOrm.productId = item.productId;
+      itemOrm.variantId = item.variantId;
       itemOrm.productName = item.productName;
       itemOrm.sku = item.sku;
       itemOrm.unitPrice = item.unitPrice.toFixed(2);
@@ -53,8 +61,10 @@ export class OrderMapper {
       orderNumber: orderOrm.orderNumber,
       status: orderOrm.status,
       currency: orderOrm.currency,
+      exchangeRate: Number(orderOrm.exchangeRate),
       items: itemsOrm.map((item) => ({
         productId: item.productId,
+        variantId: item.variantId,
         productName: item.productName,
         sku: item.sku,
         unitPrice: Number(item.unitPrice),
@@ -62,10 +72,15 @@ export class OrderMapper {
         lineTotal: Number(item.lineTotal),
       })),
       subtotal: Number(orderOrm.subtotal),
+      couponCode: orderOrm.couponCode,
+      discount: Number(orderOrm.discount),
       shippingCost: Number(orderOrm.shippingCost),
+      shippingMethodCode: orderOrm.shippingMethodCode,
+      shippingMethodLabel: orderOrm.shippingMethodLabel,
       total: Number(orderOrm.total),
       paymentMethod: orderOrm.paymentMethod,
       paymentMethodLabel: orderOrm.paymentMethodLabel,
+      paymentFailureMessage: orderOrm.paymentFailureMessage,
       shippingAddress: {
         recipientName: orderOrm.shippingRecipientName,
         phone: orderOrm.shippingPhone,
@@ -77,6 +92,7 @@ export class OrderMapper {
         streetLine2: orderOrm.shippingStreetLine2,
       },
       placedAt: orderOrm.placedAt,
+      paidAt: orderOrm.paidAt,
     });
   }
 }
