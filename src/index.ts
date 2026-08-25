@@ -8,6 +8,7 @@ import { buildAdminModule } from "./admin/infrastructure/http/admin.module";
 import { buildAftersalesModule } from "./aftersales/infrastructure/http/aftersales.module";
 import { buildCartModule } from "./cart/infrastructure/http/cart.module";
 import { buildCatalogModule } from "./catalog/infrastructure/http/catalog.module";
+import { buildNotificationsModule } from "./notifications/infrastructure/http/notifications.module";
 import { buildOrdersModule } from "./orders/infrastructure/http/orders.module";
 import { buildPaymentsModule } from "./payments/infrastructure/http/payments.module";
 import { buildShippingModule } from "./shipping/infrastructure/http/shipping.module";
@@ -58,9 +59,6 @@ async function bootstrap(): Promise<void> {
   const accounts = buildAccountsModule(AppDataSource);
   app.use("/api/v1/accounts", accounts.router);
 
-  const shipping = buildShippingModule(AppDataSource, exchangeRateProvider);
-  app.use("/api/v1/shipping", shipping.router);
-
   // Hay un ciclo real entre tres módulos: `catalog` necesita el resumen de
   // reseñas de `aftersales`, `aftersales` necesita saber si el usuario compró
   // (de `orders`), y `orders` necesita los puertos de snapshot y reserva de
@@ -80,11 +78,21 @@ async function bootstrap(): Promise<void> {
   const catalog = buildCatalogModule(AppDataSource, lazyRatingSummaryPort);
   const cart = buildCartModule(AppDataSource, catalog.getCartProductSnapshots);
 
+  // Después de `catalog` porque desde [0048] `shipping` necesita las medidas
+  // de las variantes para cotizar el bulto con la transportadora.
+  const shipping = buildShippingModule(
+    AppDataSource,
+    exchangeRateProvider,
+    catalog.getCartProductSnapshots,
+  );
+  app.use("/api/v1/shipping", shipping.router);
+
   const orders = buildOrdersModule(AppDataSource, {
     catalogSnapshotPort: catalog.getCartProductSnapshots,
     shippingAddressPort: accounts.getAddressById,
     customerContactPort: accounts.getCustomerContact,
     shippingQuotePort: shipping.quoteShippingMethod,
+    shippingRestrictionPort: shipping.checkShippingRestrictions,
     couponPort: cart.quoteCoupon,
     redeemCouponPort: cart.redeemCoupon,
     clearCartPort: cart.clearCartForUser,
@@ -103,6 +111,10 @@ async function bootstrap(): Promise<void> {
 
   app.use("/api/v1/wishlist", buildWishlistModule(AppDataSource));
 
+  // [0044]: se suscribe a los cambios de estado que publica `orders`, así que
+  // se construye después de él.
+  app.use("/api/v1/notifications", buildNotificationsModule(AppDataSource, emailSender));
+
   const aftersales = buildAftersalesModule(AppDataSource, orders.hasUserPurchasedProduct);
   app.use("/api/v1/products/:productId/reviews", aftersales.reviewsRouter);
 
@@ -111,7 +123,19 @@ async function bootstrap(): Promise<void> {
   app.use("/api/v1/products", catalog.productsRouter);
   app.use("/api/v1/categories", catalog.categoriesRouter);
   app.use("/api/v1/cart", cart.router);
-  app.use("/api/v1/admin", buildAdminModule(catalog.setProductFeatured, cart.createCoupon));
+  app.use(
+    "/api/v1/admin",
+    buildAdminModule({
+      setProductFeatured: catalog.setProductFeatured,
+      createCoupon: cart.createCoupon,
+      createShippingZone: shipping.createShippingZone,
+      updateShippingZone: shipping.updateShippingZone,
+      deleteShippingZone: shipping.deleteShippingZone,
+      listShippingZones: shipping.listShippingZones,
+      setZoneProductRestrictions: shipping.setZoneProductRestrictions,
+      updateOrderFulfillmentStatus: orders.updateOrderFulfillmentStatus,
+    }),
+  );
 
   app.get("/api/docs.json", (_req, res) => {
     res.json(getOpenApiDocument());
