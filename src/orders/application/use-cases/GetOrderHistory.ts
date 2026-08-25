@@ -4,6 +4,7 @@ import {
   OrderHistoryItem,
   OrderQueryRepository,
 } from "../../domain/repositories/OrderQueryRepository";
+import { CustomerContactPort } from "../ports/CustomerContactPort";
 
 export interface GetOrderHistoryInput {
   userId: string;
@@ -20,12 +21,21 @@ export interface GetOrderHistoryResult {
 }
 
 export class GetOrderHistory {
-  constructor(private readonly orderQueryRepository: OrderQueryRepository) {}
+  constructor(
+    private readonly orderQueryRepository: OrderQueryRepository,
+    private readonly customerContactPort: CustomerContactPort,
+  ) {}
 
   async execute(input: GetOrderHistoryInput): Promise<GetOrderHistoryResult> {
+    // El correo se resuelve acá y no llega en el input: viene de la cuenta,
+    // no de la petición, así que nadie puede pedir el historial de otro
+    // mandando un correo ajeno.
+    const { email } = await this.customerContactPort.execute({ userId: input.userId });
+
     const { items, total } = await this.orderQueryRepository.listForUserHistory(
       {
         userId: input.userId,
+        userEmail: email,
         status: input.status,
         dateFrom: input.dateFrom,
         dateTo: input.dateTo,

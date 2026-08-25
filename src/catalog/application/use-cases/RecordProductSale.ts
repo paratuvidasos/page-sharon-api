@@ -5,7 +5,7 @@ export interface RecordProductSaleInput {
 }
 
 /**
- * Suscriptor de `OrderPlaced` (evento de `orders`, ver [0019]): mantiene el
+ * Suscriptor de `OrderPaid` (evento de `orders`, ver [0019]): mantiene el
  * contador `sales_count` de catalog sin que catalog conozca la tabla
  * `order_items` de `orders` (ver reglas 2-4 del CLAUDE.md del repo).
  */

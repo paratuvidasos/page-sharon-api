@@ -55,7 +55,7 @@ export class ProductOrmEntity {
   @Column({ type: "jsonb", default: [] })
   images!: string[];
 
-  // Incrementado por RecordProductSale al escuchar OrderPlaced (evento de
+  // Incrementado por RecordProductSale al escuchar OrderPaid (evento de
   // `orders`, ver [0019]) — nunca a través de ProductMapper/save() del
   // agregado, sino con un UPDATE atómico (Repository.increment).
   @Column({ name: "sales_count", type: "int", default: 0 })
