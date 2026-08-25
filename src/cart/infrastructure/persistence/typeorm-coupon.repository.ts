@@ -20,4 +20,8 @@ export class TypeOrmCouponRepository implements CouponRepository {
     const orm = await this.ormRepository.findOne({ where: { code: code.toUpperCase() } });
     return orm ? CouponMapper.toDomain(orm) : null;
   }
+
+  async incrementRedemptions(code: string): Promise<void> {
+    await this.ormRepository.increment({ code: code.toUpperCase() }, "redemptionsCount", 1);
+  }
 }
