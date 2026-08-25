@@ -1,23 +1,25 @@
 import { Router } from "express";
-import { SetProductFeatured } from "../../../catalog/application/use-cases/SetProductFeatured";
-import { CreateCoupon } from "../../../cart/application/use-cases/CreateCoupon";
 import { buildAuthenticate } from "../../../shared-kernel/infrastructure/http/authenticate.middleware";
 import { requireRole } from "../../../shared-kernel/infrastructure/http/require-role.middleware";
 import { JwtTokenService } from "../../../shared-kernel/infrastructure/security/JwtTokenService";
-import { AdminController } from "./admin.controller";
+import { AdminController, AdminControllerUseCases } from "./admin.controller";
 import { buildAdminRoutes } from "./admin.routes";
 
 const ADMIN_ROLE = "ADMIN";
 
 /**
- * Módulo mínimo: [0022] (marcar producto como destacado) y el alta de
- * cupones para [0027] (no hay CRUD de catálogo ni administración de
- * cupones completa en el backlog). No tiene tabla propia: llama a los
- * casos de uso que exponen `catalog`/`cart` (ver regla 2 del CLAUDE.md del
- * repo), nunca sus repositorios.
+ * Panel administrativo: [0022] (producto destacado), [0027] (alta de cupones),
+ * [0049] (zonas de cobertura y restricciones de envío) y [0047] (marcar un
+ * pedido como enviado con su guía). No tiene tabla propia ni capa de dominio:
+ * llama a los casos de uso que exponen `catalog`, `cart`, `shipping` y
+ * `orders` (ver regla 2 del CLAUDE.md del repo), nunca sus repositorios.
+ *
+ * Recibe las dependencias como objeto y no como lista de parámetros porque ya
+ * son varias de tres módulos distintos, y una lista posicional larga se
+ * equivoca sola — mismo criterio que `buildOrdersModule`.
  */
-export function buildAdminModule(setProductFeatured: SetProductFeatured, createCoupon: CreateCoupon): Router {
-  const controller = new AdminController(setProductFeatured, createCoupon);
+export function buildAdminModule(useCases: AdminControllerUseCases): Router {
+  const controller = new AdminController(useCases);
 
   const tokenService = new JwtTokenService(requireJwtSecret());
   const authenticate = buildAuthenticate(tokenService);

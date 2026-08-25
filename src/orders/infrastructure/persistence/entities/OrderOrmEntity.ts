@@ -106,6 +106,29 @@ export class OrderOrmEntity {
   @Column({ name: "shipping_street_line2", type: "varchar", length: 200, nullable: true })
   shippingStreetLine2!: string | null;
 
+  // [0047]: guía y transportadora. Todo NULL mientras el pedido no salga.
+  // El nombre de la transportadora se guarda además del código porque el
+  // comprador ve el nombre, y ese texto no debería depender de que el catálogo
+  // de transportadoras del futuro siga teniendo ese código.
+  @Column({ name: "carrier_code", type: "varchar", length: 40, nullable: true })
+  carrierCode!: string | null;
+
+  @Column({ name: "carrier_name", type: "varchar", length: 100, nullable: true })
+  carrierName!: string | null;
+
+  @Column({ name: "tracking_number", type: "varchar", length: 60, nullable: true })
+  @Index("ix_orders_tracking_number")
+  trackingNumber!: string | null;
+
+  @Column({ name: "tracking_url", type: "varchar", length: 500, nullable: true })
+  trackingUrl!: string | null;
+
+  @Column({ name: "shipped_at", type: "timestamptz", nullable: true })
+  shippedAt!: Date | null;
+
+  @Column({ name: "delivered_at", type: "timestamptz", nullable: true })
+  deliveredAt!: Date | null;
+
   @Column({ name: "placed_at", type: "timestamptz" })
   placedAt!: Date;
 

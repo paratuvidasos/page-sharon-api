@@ -47,6 +47,7 @@ export class OrdersController {
       status: query.status,
       dateFrom: query.dateFrom,
       dateTo: query.dateTo,
+      onlyShipped: query.onlyShipped,
       page: query.page,
       limit: query.limit,
     });

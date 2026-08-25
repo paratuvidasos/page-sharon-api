@@ -11,6 +11,8 @@ export interface GetOrderHistoryInput {
   status?: OrderStatus;
   dateFrom?: Date;
   dateTo?: Date;
+  /** [0046]: solo los pedidos ya despachados, para la pestaña de envíos del perfil. */
+  onlyShipped?: boolean;
   page: number;
   limit: number;
 }
@@ -39,6 +41,7 @@ export class GetOrderHistory {
         status: input.status,
         dateFrom: input.dateFrom,
         dateTo: input.dateTo,
+        onlyShipped: input.onlyShipped,
       },
       { page: input.page, limit: input.limit },
     );

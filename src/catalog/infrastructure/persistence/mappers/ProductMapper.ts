@@ -58,6 +58,10 @@ export class ProductMapper {
     orm.priceOverride = props.priceOverride != null ? props.priceOverride.amount.toFixed(2) : null;
     orm.stockQuantity = props.stockQuantity;
     orm.imageUrl = props.imageUrl;
+    orm.weightGrams = props.parcel.weightGrams;
+    orm.lengthCm = props.parcel.lengthCm != null ? props.parcel.lengthCm.toFixed(2) : null;
+    orm.widthCm = props.parcel.widthCm != null ? props.parcel.widthCm.toFixed(2) : null;
+    orm.heightCm = props.parcel.heightCm != null ? props.parcel.heightCm.toFixed(2) : null;
     return orm;
   }
 
@@ -71,6 +75,12 @@ export class ProductMapper {
       priceOverride: orm.priceOverride != null ? Money.of(Number(orm.priceOverride)) : null,
       stockQuantity: orm.stockQuantity,
       imageUrl: orm.imageUrl,
+      parcel: {
+        weightGrams: orm.weightGrams,
+        lengthCm: orm.lengthCm != null ? Number(orm.lengthCm) : null,
+        widthCm: orm.widthCm != null ? Number(orm.widthCm) : null,
+        heightCm: orm.heightCm != null ? Number(orm.heightCm) : null,
+      },
     });
   }
 }

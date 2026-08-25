@@ -22,6 +22,7 @@ import { CustomerContactPort } from "../ports/CustomerContactPort";
 import { PaymentSession, PaymentSessionPort } from "../ports/PaymentSessionPort";
 import { ShippingAddressPort } from "../ports/ShippingAddressPort";
 import { ShippingQuotePort } from "../ports/ShippingQuotePort";
+import { ShippingRestrictionPort } from "../ports/ShippingRestrictionPort";
 import { ReserveStockPort } from "../ports/StockReservationPort";
 import { buildOrderSummary, OrderSummary } from "../order-summary";
 
@@ -60,11 +61,13 @@ export interface StartCheckoutResult {
  * que mandara el cliente y sin cobrar nada. El orden de los pasos importa:
  *
  *  1. Revalidar stock y precio contra el catálogo.
- *  2. Recotizar el envío en el servidor.
- *  3. Apartar el stock **antes** de crear el pedido: si no alcanza, no debe
+ *  2. Verificar que ningún producto esté restringido para la zona de destino
+ *     ([0049]).
+ *  3. Recotizar el envío en el servidor.
+ *  4. Apartar el stock **antes** de crear el pedido: si no alcanza, no debe
  *     quedar ni rastro del pedido.
- *  4. Crear el pedido en PENDING.
- *  5. Pedirle a `payments` los parámetros firmados de la pasarela.
+ *  5. Crear el pedido en PENDING.
+ *  6. Pedirle a `payments` los parámetros firmados de la pasarela.
  *
  * Nada de lo que decide el monto viene del body: los precios salen del
  * catálogo, el descuento del cupón revalidado, y el envío de la tabla de
@@ -77,6 +80,7 @@ export class StartCheckout {
     private readonly catalogSnapshotPort: CatalogSnapshotPort,
     private readonly shippingAddressPort: ShippingAddressPort,
     private readonly shippingQuotePort: ShippingQuotePort,
+    private readonly shippingRestrictionPort: ShippingRestrictionPort,
     private readonly couponPort: CouponPort,
     private readonly customerContactPort: CustomerContactPort,
     private readonly reserveStockPort: ReserveStockPort,
@@ -110,6 +114,17 @@ export class StartCheckout {
     const lines = await validateCheckoutLines(input.items, this.catalogSnapshotPort);
     const address = await this.resolveAddress(input, userId);
 
+    // [0049]: antes de apartar stock. Un pedido que no se puede enviar a esa
+    // zona no va a existir, y dejar producto reservado por él lo sacaría del
+    // inventario hasta que venciera la reserva — el mismo motivo por el que
+    // la cuenta se crea antes de reservar.
+    await this.shippingRestrictionPort.execute({
+      countryCode: address.countryCode,
+      stateProvince: address.stateProvince,
+      postalCode: address.postalCode,
+      productIds: lines.map((line) => line.productId),
+    });
+
     // Los precios del catálogo y los cupones están en la moneda base; la
     // conversión ocurre acá, una sola vez, con la tasa que se congela en el
     // pedido. El cupón se cotiza ANTES de convertir para que uno de monto
@@ -136,9 +151,14 @@ export class StartCheckout {
     const shipping = await this.shippingQuotePort.execute({
       countryCode: address.countryCode,
       stateProvince: address.stateProvince,
+      postalCode: address.postalCode,
       subtotal: discountedSubtotal,
       currency: input.currency,
       method: input.shippingMethod,
+      // [0048]: `shipping` resuelve el bulto contra el catálogo por su cuenta.
+      // `orders` solo dice qué se está enviando; el peso nunca sale de acá,
+      // porque entonces también podría salir del cliente.
+      items: lines.map((line) => ({ variantId: line.variantId, quantity: line.quantity })),
     });
 
     const orderId = generateId();

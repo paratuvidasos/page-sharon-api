@@ -1,5 +1,6 @@
 import { Currency } from "../../../shared-kernel/domain/enums/Currency";
 import { ShippingMethod } from "../enums/ShippingMethod";
+import { RestrictedProductDetail } from "../exceptions/ProductsRestrictedForZoneException";
 
 export interface ShippingRateReadModel {
   id: string;
@@ -15,9 +16,15 @@ export interface ShippingRateReadModel {
   freeShippingThreshold: number | null;
 }
 
+/**
+ * Destino a cotizar. Desde [0049] el departamento y el código postal son
+ * opcionales por separado: el carrito puede cotizar con solo el país y un
+ * código postal ([0042]), y el checkout siempre manda los tres.
+ */
 export interface ShippingDestination {
   countryCode: string;
-  stateProvince: string;
+  stateProvince?: string | null;
+  postalCode?: string | null;
 }
 
 /**
@@ -36,4 +43,18 @@ export interface ShippingRateQueryRepository {
    * Vacío si ninguna zona activa lo cubre.
    */
   findRatesForDestination(destination: ShippingDestination): Promise<ShippingRateReadModel[]>;
+
+  /**
+   * [0049]: la zona activa que cubre el destino, o `null` si no hay cobertura.
+   * Se consulta aparte de las tarifas porque una zona puede tener
+   * restricciones de producto aunque no se le esté pidiendo una cotización.
+   */
+  findZoneIdForDestination(destination: ShippingDestination): Promise<string | null>;
+
+  /**
+   * Cuáles de los productos indicados están restringidos en esa zona, con su
+   * motivo. Recibe la lista para no traer la tabla entera: un pedido pregunta
+   * por sus líneas, no por el catálogo completo.
+   */
+  findRestrictedProducts(zoneId: string, productIds: string[]): Promise<RestrictedProductDetail[]>;
 }

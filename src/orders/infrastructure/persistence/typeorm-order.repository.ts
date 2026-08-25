@@ -4,6 +4,7 @@ import { OrderRepository } from "../../domain/repositories/OrderRepository";
 import { OrderMapper } from "./mappers/OrderMapper";
 import { OrderItemOrmEntity } from "./entities/OrderItemOrmEntity";
 import { OrderOrmEntity } from "./entities/OrderOrmEntity";
+import { OrderStatusHistoryOrmEntity } from "./entities/OrderStatusHistoryOrmEntity";
 
 const ANONYMIZED_RECIPIENT_NAME = "Cliente eliminado";
 const ANONYMIZED_PHONE = "0000000000";
@@ -18,18 +19,35 @@ export class TypeOrmOrderRepository implements OrderRepository {
 
   async save(order: Order): Promise<void> {
     const { order: orderOrm, items: itemsOrm } = OrderMapper.toOrm(order);
+    const historyOrm = OrderMapper.pendingStatusHistoryToOrm(order);
+
     await this.dataSource.transaction(async (manager) => {
       await manager.save(OrderOrmEntity, orderOrm);
       await manager.save(OrderItemOrmEntity, itemsOrm);
+      if (historyOrm.length > 0) {
+        await manager.save(OrderStatusHistoryOrmEntity, historyOrm);
+      }
     });
   }
 
   /**
-   * Solo la fila del pedido. Ver el porqué en `OrderRepository.update`.
+   * La fila del pedido y las entradas de historial que dejó la transición. Los
+   * ítems no se tocan: ver el porqué en `OrderRepository.update`.
+   *
+   * Las dos escrituras van en una transacción porque un estado sin su entrada
+   * de historial es peor que no haber cambiado el estado: la pantalla de
+   * rastreo mostraría "enviado" sin decir cuándo.
    */
   async update(order: Order): Promise<void> {
     const { order: orderOrm } = OrderMapper.toOrm(order);
-    await this.ormRepository.save(orderOrm);
+    const historyOrm = OrderMapper.pendingStatusHistoryToOrm(order);
+
+    await this.dataSource.transaction(async (manager) => {
+      await manager.save(OrderOrmEntity, orderOrm);
+      if (historyOrm.length > 0) {
+        await manager.save(OrderStatusHistoryOrmEntity, historyOrm);
+      }
+    });
   }
 
   async findById(id: string): Promise<Order | null> {
@@ -45,10 +63,13 @@ export class TypeOrmOrderRepository implements OrderRepository {
     if (!orderOrm) {
       return null;
     }
-    const itemsOrm = await this.dataSource
-      .getRepository(OrderItemOrmEntity)
-      .find({ where: { orderId: orderOrm.id } });
-    return OrderMapper.toDomain(orderOrm, itemsOrm);
+    const [itemsOrm, historyOrm] = await Promise.all([
+      this.dataSource.getRepository(OrderItemOrmEntity).find({ where: { orderId: orderOrm.id } }),
+      this.dataSource
+        .getRepository(OrderStatusHistoryOrmEntity)
+        .find({ where: { orderId: orderOrm.id }, order: { changedAt: "ASC" } }),
+    ]);
+    return OrderMapper.toDomain(orderOrm, itemsOrm, historyOrm);
   }
 
   async anonymizeShippingSnapshotForUser(userId: string): Promise<void> {

@@ -4,6 +4,7 @@ import { OrderStatus } from "../enums/OrderStatus";
 import { EmptyOrderItemsException } from "../exceptions/EmptyOrderItemsException";
 import { InvalidOrderStatusTransitionException } from "../exceptions/InvalidOrderStatusTransitionException";
 import { OrderMustHaveOwnerException } from "../exceptions/OrderMustHaveOwnerException";
+import { ShipmentTrackingRequiredException } from "../exceptions/ShipmentTrackingRequiredException";
 
 export interface OrderItemProps {
   productId: string;
@@ -13,6 +14,39 @@ export interface OrderItemProps {
   unitPrice: number;
   quantity: number;
   lineTotal: number;
+}
+
+/**
+ * [0047]: datos del envío una vez despachado. `null` mientras el pedido no
+ * haya salido.
+ */
+export interface OrderShipmentSnapshot {
+  carrierCode: string;
+  carrierName: string;
+  trackingNumber: string;
+  /** Enlace de rastreo de la transportadora, si la hay. */
+  trackingUrl: string | null;
+  shippedAt: Date;
+  deliveredAt: Date | null;
+}
+
+/**
+ * [0043]: una entrada por cada cambio de estado, con su fecha. Es lo que hace
+ * visible "el pedido pasó a preparación el martes y salió el jueves" en vez de
+ * solo el estado actual.
+ */
+export interface OrderStatusChange {
+  status: OrderStatus;
+  changedAt: Date;
+  note: string | null;
+}
+
+export interface MarkShippedInput {
+  carrierCode: string;
+  carrierName: string;
+  trackingNumber: string;
+  trackingUrl: string | null;
+  shippedAt: Date;
 }
 
 export interface ShippingAddressSnapshot {
@@ -48,6 +82,10 @@ export interface OrderProps {
   /** [0040]: motivo del último rechazo, ya en lenguaje de usuario. */
   paymentFailureMessage: string | null;
   shippingAddress: ShippingAddressSnapshot;
+  /** [0047]: guía y transportadora. `null` hasta que el pedido se despacha. */
+  shipment: OrderShipmentSnapshot | null;
+  /** [0043]: historial de estados, del más antiguo al más reciente. */
+  statusHistory: OrderStatusChange[];
   placedAt: Date;
   paidAt: Date | null;
 }
@@ -79,7 +117,25 @@ export interface PlaceOrderInput {
 }
 
 export class Order {
+  /**
+   * Cambios de estado todavía no persistidos. El repositorio los vacía con
+   * `pullNewStatusChanges()` dentro de la misma transacción en la que guarda
+   * el pedido.
+   *
+   * Existe para que el historial no dependa de que cada caso de uso se acuerde
+   * de escribirlo: cualquier transición del agregado lo alimenta sola, y una
+   * transición nueva que se agregue mañana queda registrada sin tocar nada
+   * más.
+   */
+  private newStatusChanges: OrderStatusChange[] = [];
+
   private constructor(private props: OrderProps) {}
+
+  private recordStatusChange(status: OrderStatus, changedAt: Date, note: string | null): void {
+    const change: OrderStatusChange = { status, changedAt, note };
+    this.props.statusHistory = [...this.props.statusHistory, change];
+    this.newStatusChanges.push(change);
+  }
 
   /**
    * Un pedido debe tener exactamente un dueño: el usuario autenticado que lo
@@ -111,7 +167,7 @@ export class Order {
     const discount = Math.min(Math.max(input.discount, 0), subtotal);
     const total = subtotal - discount + input.shippingCost;
 
-    return new Order({
+    const order = new Order({
       id: input.id,
       userId: input.userId,
       guestEmail: input.guestEmail,
@@ -131,9 +187,14 @@ export class Order {
       paymentMethodLabel: input.paymentMethodLabel,
       paymentFailureMessage: null,
       shippingAddress: input.shippingAddress,
+      shipment: null,
+      statusHistory: [],
       placedAt: input.placedAt,
       paidAt: null,
     });
+
+    order.recordStatusChange(OrderStatus.PENDING, input.placedAt, null);
+    return order;
   }
 
   static reconstitute(props: OrderProps): Order {
@@ -180,6 +241,7 @@ export class Order {
     this.props.status = OrderStatus.PAID;
     this.props.paidAt = paidAt;
     this.props.paymentFailureMessage = null;
+    this.recordStatusChange(OrderStatus.PAID, paidAt, null);
     // La pasarela sabe con qué se pagó de verdad; lo que eligió el comprador
     // al abrir el checkout era solo una intención.
     if (paymentMethod) {
@@ -194,6 +256,7 @@ export class Order {
     }
     this.props.status = OrderStatus.PAYMENT_FAILED;
     this.props.paymentFailureMessage = reason;
+    this.recordStatusChange(OrderStatus.PAYMENT_FAILED, new Date(), reason);
   }
 
   /**
@@ -209,6 +272,71 @@ export class Order {
     this.props.paymentMethod = paymentMethod;
     this.props.paymentMethodLabel = paymentMethodLabel;
     this.props.paymentFailureMessage = null;
+    this.recordStatusChange(OrderStatus.PENDING, new Date(), "Reintento de pago");
+  }
+
+  /**
+   * [0047]: el pedido entra en preparación. Solo desde PAID — antes de que la
+   * plata entre no se arma nada.
+   */
+  markInPreparation(changedAt: Date): void {
+    if (this.props.status !== OrderStatus.PAID) {
+      throw new InvalidOrderStatusTransitionException(this.props.status, OrderStatus.IN_PREPARATION);
+    }
+    this.props.status = OrderStatus.IN_PREPARATION;
+    this.recordStatusChange(OrderStatus.IN_PREPARATION, changedAt, null);
+  }
+
+  /**
+   * [0047]: el pedido sale, con su transportadora y su número de guía.
+   *
+   * Se acepta desde PAID y no solo desde IN_PREPARATION: para un pedido que se
+   * despacha el mismo día, obligar a pasar por "en preparación" sería
+   * burocracia sin información — el historial de estados igual deja constancia
+   * de que no hubo esa etapa.
+   */
+  markShipped(input: MarkShippedInput): void {
+    if (this.props.status !== OrderStatus.PAID && this.props.status !== OrderStatus.IN_PREPARATION) {
+      throw new InvalidOrderStatusTransitionException(this.props.status, OrderStatus.SHIPPED);
+    }
+    if (!input.carrierCode.trim() || !input.carrierName.trim() || !input.trackingNumber.trim()) {
+      throw new ShipmentTrackingRequiredException();
+    }
+
+    this.props.status = OrderStatus.SHIPPED;
+    this.props.shipment = {
+      carrierCode: input.carrierCode.trim(),
+      carrierName: input.carrierName.trim(),
+      trackingNumber: input.trackingNumber.trim(),
+      trackingUrl: input.trackingUrl?.trim() ? input.trackingUrl.trim() : null,
+      shippedAt: input.shippedAt,
+      deliveredAt: null,
+    };
+    this.recordStatusChange(OrderStatus.SHIPPED, input.shippedAt, this.props.shipment.trackingNumber);
+  }
+
+  /** [0047]: el pedido llegó. Solo desde SHIPPED. */
+  markDelivered(deliveredAt: Date): void {
+    if (this.props.status !== OrderStatus.SHIPPED || !this.props.shipment) {
+      throw new InvalidOrderStatusTransitionException(this.props.status, OrderStatus.DELIVERED);
+    }
+    this.props.status = OrderStatus.DELIVERED;
+    this.props.shipment = { ...this.props.shipment, deliveredAt };
+    this.recordStatusChange(OrderStatus.DELIVERED, deliveredAt, null);
+  }
+
+  get shipment(): OrderShipmentSnapshot | null {
+    return this.props.shipment ? { ...this.props.shipment } : null;
+  }
+
+  /**
+   * Devuelve los cambios de estado que todavía no se guardaron y los saca del
+   * buffer. Lo llama el repositorio, una sola vez por guardado.
+   */
+  pullNewStatusChanges(): OrderStatusChange[] {
+    const pending = this.newStatusChanges;
+    this.newStatusChanges = [];
+    return pending;
   }
 
   /** Líneas en la forma que necesita una reserva de stock. */
@@ -221,6 +349,11 @@ export class Order {
   }
 
   toProps(): OrderProps {
-    return { ...this.props, items: this.props.items.map((item) => ({ ...item })) };
+    return {
+      ...this.props,
+      items: this.props.items.map((item) => ({ ...item })),
+      shipment: this.props.shipment ? { ...this.props.shipment } : null,
+      statusHistory: this.props.statusHistory.map((change) => ({ ...change })),
+    };
   }
 }

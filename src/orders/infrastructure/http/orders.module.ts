@@ -20,6 +20,7 @@ import { HasUserPurchasedProduct } from "../../application/use-cases/HasUserPurc
 import { RejectOrderPayment } from "../../application/use-cases/RejectOrderPayment";
 import { RetryOrderPayment } from "../../application/use-cases/RetryOrderPayment";
 import { StartCheckout } from "../../application/use-cases/StartCheckout";
+import { UpdateOrderFulfillmentStatus } from "../../application/use-cases/UpdateOrderFulfillmentStatus";
 import { CatalogSnapshotPort } from "../../application/ports/CatalogSnapshotPort";
 import { ClearCartPort } from "../../application/ports/CartPort";
 import { CouponPort, RedeemCouponPort } from "../../application/ports/CouponPort";
@@ -27,6 +28,7 @@ import { CustomerContactPort } from "../../application/ports/CustomerContactPort
 import { PaymentSessionPort } from "../../application/ports/PaymentSessionPort";
 import { ShippingAddressPort } from "../../application/ports/ShippingAddressPort";
 import { ShippingQuotePort } from "../../application/ports/ShippingQuotePort";
+import { ShippingRestrictionPort } from "../../application/ports/ShippingRestrictionPort";
 import { ReserveStockPort, ResolveStockReservationPort } from "../../application/ports/StockReservationPort";
 import { TypeOrmOrderQueryRepository } from "../persistence/typeorm-order-query.repository";
 import { TypeOrmOrderRepository } from "../persistence/typeorm-order.repository";
@@ -43,6 +45,7 @@ export interface OrdersModuleDependencies {
   shippingAddressPort: ShippingAddressPort;
   customerContactPort: CustomerContactPort;
   shippingQuotePort: ShippingQuotePort;
+  shippingRestrictionPort: ShippingRestrictionPort;
   couponPort: CouponPort;
   redeemCouponPort: RedeemCouponPort;
   clearCartPort: ClearCartPort;
@@ -61,6 +64,8 @@ export interface OrdersModuleDependencies {
 export interface OrdersModule {
   router: Router;
   hasUserPurchasedProduct: HasUserPurchasedProduct;
+  /** [0047]: lo monta el módulo `admin` como `PATCH /admin/orders/:orderNumber/status`. */
+  updateOrderFulfillmentStatus: UpdateOrderFulfillmentStatus;
 }
 
 export function buildOrdersModule(
@@ -79,6 +84,7 @@ export function buildOrdersModule(
     deps.catalogSnapshotPort,
     deps.shippingAddressPort,
     deps.shippingQuotePort,
+    deps.shippingRestrictionPort,
     deps.couponPort,
     deps.customerContactPort,
     deps.reserveStockPort,
@@ -148,6 +154,11 @@ export function buildOrdersModule(
   return {
     router: buildOrdersRoutes(controller, authenticate, optionalAuthenticate),
     hasUserPurchasedProduct,
+    updateOrderFulfillmentStatus: new UpdateOrderFulfillmentStatus(
+      orderRepository,
+      deps.customerContactPort,
+      domainEventBus,
+    ),
   };
 }
 
