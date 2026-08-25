@@ -1,14 +1,18 @@
 import { Currency } from "../../../shared-kernel/domain/enums/Currency";
 import { ShippingMethod } from "../../domain/enums/ShippingMethod";
+import { ShipmentItem } from "../parcel";
 import { ShippingMethodNotAvailableException } from "../../domain/exceptions/ShippingMethodNotAvailableException";
 import { GetShippingOptions, ShippingOption } from "./GetShippingOptions";
 
 export interface QuoteShippingMethodInput {
   countryCode: string;
   stateProvince: string;
+  postalCode: string | null;
   subtotal: number;
   currency: Currency;
   method: ShippingMethod;
+  /** [0048]: qué se está enviando; el bulto se resuelve contra el catálogo. */
+  items: ShipmentItem[];
 }
 
 /**
@@ -27,8 +31,10 @@ export class QuoteShippingMethod {
     const { options } = await this.getShippingOptions.execute({
       countryCode: input.countryCode,
       stateProvince: input.stateProvince,
+      postalCode: input.postalCode ?? null,
       subtotal: input.subtotal,
       currency: input.currency,
+      items: input.items,
     });
 
     const option = options.find((current) => current.method === input.method);
