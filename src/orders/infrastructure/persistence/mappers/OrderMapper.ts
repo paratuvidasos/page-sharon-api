@@ -2,6 +2,7 @@ import { generateId } from "../../../../shared-kernel/infrastructure/ids/generat
 import { Order } from "../../../domain/entities/Order";
 import { OrderItemOrmEntity } from "../entities/OrderItemOrmEntity";
 import { OrderOrmEntity } from "../entities/OrderOrmEntity";
+import { OrderStatusHistoryOrmEntity } from "../entities/OrderStatusHistoryOrmEntity";
 
 export class OrderMapper {
   static toOrm(order: Order): { order: OrderOrmEntity; items: OrderItemOrmEntity[] } {
@@ -33,6 +34,12 @@ export class OrderMapper {
     orderOrm.shippingPostalCode = props.shippingAddress.postalCode;
     orderOrm.shippingStreetLine1 = props.shippingAddress.streetLine1;
     orderOrm.shippingStreetLine2 = props.shippingAddress.streetLine2;
+    orderOrm.carrierCode = props.shipment?.carrierCode ?? null;
+    orderOrm.carrierName = props.shipment?.carrierName ?? null;
+    orderOrm.trackingNumber = props.shipment?.trackingNumber ?? null;
+    orderOrm.trackingUrl = props.shipment?.trackingUrl ?? null;
+    orderOrm.shippedAt = props.shipment?.shippedAt ?? null;
+    orderOrm.deliveredAt = props.shipment?.deliveredAt ?? null;
     orderOrm.placedAt = props.placedAt;
     orderOrm.paidAt = props.paidAt;
 
@@ -53,7 +60,29 @@ export class OrderMapper {
     return { order: orderOrm, items: itemsOrm };
   }
 
-  static toDomain(orderOrm: OrderOrmEntity, itemsOrm: OrderItemOrmEntity[]): Order {
+  /**
+   * [0043]: las entradas de historial pendientes, listas para insertar. Se
+   * saca del agregado (vaciándolo) porque el historial es append-only: lo ya
+   * guardado no se vuelve a escribir.
+   */
+  static pendingStatusHistoryToOrm(order: Order): OrderStatusHistoryOrmEntity[] {
+    const orderId = order.id;
+    return order.pullNewStatusChanges().map((change) => {
+      const historyOrm = new OrderStatusHistoryOrmEntity();
+      historyOrm.id = generateId();
+      historyOrm.orderId = orderId;
+      historyOrm.status = change.status;
+      historyOrm.note = change.note;
+      historyOrm.changedAt = change.changedAt;
+      return historyOrm;
+    });
+  }
+
+  static toDomain(
+    orderOrm: OrderOrmEntity,
+    itemsOrm: OrderItemOrmEntity[],
+    historyOrm: OrderStatusHistoryOrmEntity[] = [],
+  ): Order {
     return Order.reconstitute({
       id: orderOrm.id,
       userId: orderOrm.userId,
@@ -91,6 +120,22 @@ export class OrderMapper {
         streetLine1: orderOrm.shippingStreetLine1,
         streetLine2: orderOrm.shippingStreetLine2,
       },
+      shipment:
+        orderOrm.trackingNumber && orderOrm.shippedAt
+          ? {
+              carrierCode: orderOrm.carrierCode ?? "",
+              carrierName: orderOrm.carrierName ?? "",
+              trackingNumber: orderOrm.trackingNumber,
+              trackingUrl: orderOrm.trackingUrl,
+              shippedAt: orderOrm.shippedAt,
+              deliveredAt: orderOrm.deliveredAt,
+            }
+          : null,
+      statusHistory: historyOrm.map((change) => ({
+        status: change.status,
+        changedAt: change.changedAt,
+        note: change.note,
+      })),
       placedAt: orderOrm.placedAt,
       paidAt: orderOrm.paidAt,
     });

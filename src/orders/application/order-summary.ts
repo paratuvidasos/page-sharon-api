@@ -1,6 +1,11 @@
 import { Currency } from "../../shared-kernel/domain/enums/Currency";
 import { PaymentMethod } from "../../shared-kernel/domain/enums/PaymentMethod";
-import { Order, ShippingAddressSnapshot } from "../domain/entities/Order";
+import {
+  Order,
+  OrderShipmentSnapshot,
+  OrderStatusChange,
+  ShippingAddressSnapshot,
+} from "../domain/entities/Order";
 import { OrderStatus } from "../domain/enums/OrderStatus";
 
 export interface OrderSummaryLine {
@@ -31,6 +36,10 @@ export interface OrderSummary {
   paymentMethodLabel: string | null;
   paymentFailureMessage: string | null;
   shippingAddress: ShippingAddressSnapshot;
+  /** [0047]: guía y transportadora. `null` hasta que el pedido se despacha. */
+  shipment: OrderShipmentSnapshot | null;
+  /** [0043]: historial de estados con la fecha de cada cambio. */
+  statusHistory: OrderStatusChange[];
   placedAt: Date;
   paidAt: Date | null;
 }
@@ -65,6 +74,8 @@ export function buildOrderSummary(order: Order): OrderSummary {
     paymentMethodLabel: props.paymentMethodLabel,
     paymentFailureMessage: props.paymentFailureMessage,
     shippingAddress: props.shippingAddress,
+    shipment: props.shipment,
+    statusHistory: props.statusHistory,
     placedAt: props.placedAt,
     paidAt: props.paidAt,
   };
