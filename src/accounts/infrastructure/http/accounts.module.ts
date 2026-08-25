@@ -8,6 +8,7 @@ import { LocalFileStorage } from "../../../shared-kernel/infrastructure/storage/
 import { AddAddress } from "../../application/use-cases/addresses/AddAddress";
 import { ArchiveAddress } from "../../application/use-cases/addresses/ArchiveAddress";
 import { DeleteAddress } from "../../application/use-cases/addresses/DeleteAddress";
+import { GetAddressById } from "../../application/use-cases/addresses/GetAddressById";
 import { DeleteAccount } from "../../application/use-cases/profile/DeleteAccount";
 import { ListAddresses } from "../../application/use-cases/addresses/ListAddresses";
 import { LoginUser } from "../../application/use-cases/session/LoginUser";
@@ -22,6 +23,7 @@ import { ResetPassword } from "../../application/use-cases/password-reset/ResetP
 import { RestoreAddress } from "../../application/use-cases/addresses/RestoreAddress";
 import { SetDefaultShippingAddress } from "../../application/use-cases/addresses/SetDefaultShippingAddress";
 import { UpdateAddress } from "../../application/use-cases/addresses/UpdateAddress";
+import { GetCustomerContact } from "../../application/use-cases/profile/GetCustomerContact";
 import { GetProfile } from "../../application/use-cases/profile/GetProfile";
 import { UpdateProfile } from "../../application/use-cases/profile/UpdateProfile";
 import { VerifyEmail } from "../../application/use-cases/registration/VerifyEmail";
@@ -38,6 +40,10 @@ export interface AccountsModule {
   router: Router;
   registerUserForCheckout: RegisterUserForCheckout;
   loginUser: LoginUser;
+  /** [0033]: `orders` resuelve por acá la dirección guardada elegida en el checkout. */
+  getAddressById: GetAddressById;
+  /** Correo y nombre del comprador con sesión, para la pasarela y el correo de confirmación. */
+  getCustomerContact: GetCustomerContact;
 }
 
 export function buildAccountsModule(dataSource: DataSource): AccountsModule {
@@ -120,6 +126,8 @@ export function buildAccountsModule(dataSource: DataSource): AccountsModule {
   const setDefaultShippingAddress = new SetDefaultShippingAddress(userRepository);
   const archiveAddress = new ArchiveAddress(userRepository);
   const restoreAddress = new RestoreAddress(userRepository);
+  const getAddressById = new GetAddressById(userRepository);
+  const getCustomerContact = new GetCustomerContact(userRepository);
 
   const addressesController = new AddressesController(
     addAddress,
@@ -137,6 +145,8 @@ export function buildAccountsModule(dataSource: DataSource): AccountsModule {
     router: buildAccountsRoutes(controller, addressesController, authenticate),
     registerUserForCheckout,
     loginUser,
+    getAddressById,
+    getCustomerContact,
   };
 }
 
