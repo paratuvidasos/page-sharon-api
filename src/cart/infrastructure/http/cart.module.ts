@@ -5,12 +5,15 @@ import { JwtTokenService } from "../../../shared-kernel/infrastructure/security/
 import { AddItemToCart } from "../../application/use-cases/AddItemToCart";
 import { ApplyCouponToCart } from "../../application/use-cases/ApplyCouponToCart";
 import { ClearCart } from "../../application/use-cases/ClearCart";
+import { ClearCartForUser } from "../../application/use-cases/ClearCartForUser";
 import { GetCart } from "../../application/use-cases/GetCart";
 import { MergeGuestCartIntoUserCart } from "../../application/use-cases/MergeGuestCartIntoUserCart";
 import { RemoveCartItem } from "../../application/use-cases/RemoveCartItem";
 import { RemoveCouponFromCart } from "../../application/use-cases/RemoveCouponFromCart";
 import { UpdateCartItemQuantity } from "../../application/use-cases/UpdateCartItemQuantity";
 import { CreateCoupon } from "../../application/use-cases/CreateCoupon";
+import { QuoteCoupon } from "../../application/use-cases/QuoteCoupon";
+import { RedeemCoupon } from "../../application/use-cases/RedeemCoupon";
 import { CatalogSnapshotPort } from "../../application/ports/CatalogSnapshotPort";
 import { CouponRepository } from "../../domain/repositories/CouponRepository";
 import { TypeOrmCartRepository } from "../persistence/typeorm-cart.repository";
@@ -23,6 +26,12 @@ export interface CartModule {
   couponRepository: CouponRepository;
   mergeGuestCartIntoUserCart: MergeGuestCartIntoUserCart;
   createCoupon: CreateCoupon;
+  /** [0038]: revalida el cupón contra el subtotal real al confirmar el pedido. */
+  quoteCoupon: QuoteCoupon;
+  /** [0039]: cuenta el uso del cupón cuando el pago se aprueba. */
+  redeemCoupon: RedeemCoupon;
+  /** [0039]: vacía el carrito del usuario cuyo pedido quedó pagado. */
+  clearCartForUser: ClearCartForUser;
 }
 
 export function buildCartModule(dataSource: DataSource, catalogSnapshotPort: CatalogSnapshotPort): CartModule {
@@ -42,6 +51,9 @@ export function buildCartModule(dataSource: DataSource, catalogSnapshotPort: Cat
     couponRepository,
   );
   const createCoupon = new CreateCoupon(couponRepository);
+  const quoteCoupon = new QuoteCoupon(couponRepository);
+  const redeemCoupon = new RedeemCoupon(couponRepository);
+  const clearCartForUser = new ClearCartForUser(cartRepository);
 
   const controller = new CartController(
     getCart,
@@ -62,6 +74,9 @@ export function buildCartModule(dataSource: DataSource, catalogSnapshotPort: Cat
     couponRepository,
     mergeGuestCartIntoUserCart,
     createCoupon,
+    quoteCoupon,
+    redeemCoupon,
+    clearCartForUser,
   };
 }
 

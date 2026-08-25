@@ -76,6 +76,8 @@ export interface ProductVariantSnapshot {
   productId: string;
   variantId: string;
   productName: string;
+  /** Necesario para el snapshot de la línea del pedido ([0038]). */
+  sku: string;
   variantLabel: string | null;
   thumbnailUrl: string | null;
   unitPrice: number;

@@ -1,9 +1,13 @@
 import { Router } from "express";
 import { DataSource } from "typeorm";
-import { OrderPlaced } from "../../../shared-kernel/domain/events/OrderPlaced";
+import { OrderPaid } from "../../../shared-kernel/domain/events/OrderPaid";
 import { domainEventBus } from "../../../shared-kernel/infrastructure/events/InMemoryDomainEventBus";
 import { AutocompleteProducts } from "../../application/use-cases/AutocompleteProducts";
+import { CommitStockReservation } from "../../application/use-cases/CommitStockReservation";
+import { ExpireStaleReservations } from "../../application/use-cases/ExpireStaleReservations";
 import { GetCartProductSnapshots } from "../../application/use-cases/GetCartProductSnapshots";
+import { ReleaseStockReservation } from "../../application/use-cases/ReleaseStockReservation";
+import { ReserveStock } from "../../application/use-cases/ReserveStock";
 import { GetProductDetail } from "../../application/use-cases/GetProductDetail";
 import { GetProductFilterFacets } from "../../application/use-cases/GetProductFilterFacets";
 import { ListCategories } from "../../application/use-cases/ListCategories";
@@ -17,6 +21,7 @@ import { RatingSummaryPort } from "../../application/ports/RatingSummaryPort";
 import { TypeOrmCategoryQueryRepository } from "../persistence/typeorm-category-query.repository";
 import { TypeOrmProductQueryRepository } from "../persistence/typeorm-product-query.repository";
 import { TypeOrmProductRepository } from "../persistence/typeorm-product.repository";
+import { TypeOrmStockReservationRepository } from "../persistence/typeorm-stock-reservation.repository";
 import { CatalogController } from "./catalog.controller";
 import { buildCategoriesRoutes, buildProductsRoutes } from "./catalog.routes";
 
@@ -25,6 +30,11 @@ export interface CatalogModule {
   categoriesRouter: Router;
   setProductFeatured: SetProductFeatured;
   getCartProductSnapshots: GetCartProductSnapshots;
+  /** [0038]: puertos de reserva de stock que `orders` consume durante el checkout. */
+  reserveStock: ReserveStock;
+  commitStockReservation: CommitStockReservation;
+  releaseStockReservation: ReleaseStockReservation;
+  expireStaleReservations: ExpireStaleReservations;
 }
 
 export function buildCatalogModule(
@@ -50,9 +60,18 @@ export function buildCatalogModule(
   const setProductFeatured = new SetProductFeatured(productRepository);
   const getCartProductSnapshots = new GetCartProductSnapshots(productQueryRepository);
 
+  const stockReservationRepository = new TypeOrmStockReservationRepository(dataSource);
+  const reserveStock = new ReserveStock(stockReservationRepository);
+  const commitStockReservation = new CommitStockReservation(stockReservationRepository);
+  const releaseStockReservation = new ReleaseStockReservation(stockReservationRepository);
+  const expireStaleReservations = new ExpireStaleReservations(stockReservationRepository);
+
+  // Se cuenta la venta al pagarse el pedido, no al colocarse: antes de que
+  // existiera el flujo de pago, "colocado" era lo más cerca de "vendido" que
+  // había, pero ahora un pedido colocado puede quedarse sin pagar nunca.
   const recordProductSale = new RecordProductSale(productRepository);
-  domainEventBus.subscribe(OrderPlaced.eventName, async (event) => {
-    await recordProductSale.execute({ items: (event as OrderPlaced).items });
+  domainEventBus.subscribe(OrderPaid.eventName, async (event) => {
+    await recordProductSale.execute({ items: (event as OrderPaid).items });
   });
 
   const controller = new CatalogController(
@@ -71,5 +90,9 @@ export function buildCatalogModule(
     categoriesRouter: buildCategoriesRoutes(controller),
     setProductFeatured,
     getCartProductSnapshots,
+    reserveStock,
+    commitStockReservation,
+    releaseStockReservation,
+    expireStaleReservations,
   };
 }

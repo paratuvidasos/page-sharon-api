@@ -204,6 +204,7 @@ export class TypeOrmProductQueryRepository implements ProductQueryRepository {
       .select("variant.id", "variantId")
       .addSelect("product.id", "productId")
       .addSelect("product.name", "productName")
+      .addSelect("variant.sku", "sku")
       .addSelect("product.status", "status")
       .addSelect("product.images", "images")
       .addSelect("variant.imageUrl", "variantImageUrl")
@@ -217,6 +218,7 @@ export class TypeOrmProductQueryRepository implements ProductQueryRepository {
         variantId: string;
         productId: string;
         productName: string;
+        sku: string;
         status: ProductStatus;
         images: string[];
         variantImageUrl: string | null;
@@ -231,6 +233,7 @@ export class TypeOrmProductQueryRepository implements ProductQueryRepository {
       productId: row.productId,
       variantId: row.variantId,
       productName: row.productName,
+      sku: row.sku,
       variantLabel: [row.size, row.scent, row.color].filter((part): part is string => Boolean(part)).join(", ") || null,
       thumbnailUrl: row.variantImageUrl ?? row.images?.[0] ?? null,
       unitPrice: Number(row.unitPrice),
