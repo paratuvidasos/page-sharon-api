@@ -5,4 +5,6 @@
  */
 export enum NotificationType {
   ORDER_STATUS_CHANGED = "ORDER_STATUS_CHANGED",
+  /** [0064]: el admin rechazó una reseña del usuario, con motivo. */
+  REVIEW_REJECTED = "REVIEW_REJECTED",
 }

@@ -51,4 +51,7 @@ export interface ShippingZoneQueryRepository {
 
   /** Países y departamentos con al menos una zona activa y una tarifa activa. */
   listCoverage(): Promise<ShippingCoverageReadModel[]>;
+
+  /** [0065]: detalle de una zona para precargar el formulario de edición del panel. */
+  getById(id: string): Promise<ShippingZoneReadModel | null>;
 }

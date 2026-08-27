@@ -9,4 +9,13 @@ export enum StockReservationStatus {
   HELD = "HELD",
   COMMITTED = "COMMITTED",
   RELEASED = "RELEASED",
+  /**
+   * [0059]/[0060]: una reserva ya `COMMITTED` (pedido pagado) cuyo stock se
+   * devolvió porque el pedido se canceló o reembolsó después de pagado.
+   * Distinto de `RELEASED`, que es la devolución de una reserva que nunca
+   * llegó a pagarse (`HELD` → expiró o se abandonó el checkout) — separarlos
+   * deja el historial de reservas legible: "se pagó y después se revirtió" no
+   * es lo mismo que "nunca se pagó".
+   */
+  REVERSED = "REVERSED",
 }

@@ -24,4 +24,15 @@ export class TypeOrmCouponRepository implements CouponRepository {
   async incrementRedemptions(code: string): Promise<void> {
     await this.ormRepository.increment({ code: code.toUpperCase() }, "redemptionsCount", 1);
   }
+
+  async findAll(pagination: { page: number; limit: number }): Promise<{ items: Coupon[]; total: number }> {
+    const [rows, total] = await this.ormRepository
+      .createQueryBuilder("coupon")
+      .orderBy("coupon.createdAt", "DESC")
+      .skip((pagination.page - 1) * pagination.limit)
+      .take(pagination.limit)
+      .getManyAndCount();
+
+    return { items: rows.map((row) => CouponMapper.toDomain(row)), total };
+  }
 }

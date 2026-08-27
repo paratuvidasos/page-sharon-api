@@ -70,7 +70,14 @@ export class ProductOrmEntity {
   @Index("ix_products_is_featured")
   isFeatured!: boolean;
 
-  @OneToMany(() => ProductVariantOrmEntity, (variant) => variant.product, { cascade: true })
+  // [0057]: `orphanedRowAction: "delete"` es necesario para que quitar una
+  // variante del arreglo de dominio (`Product.removeVariant`) borre de verdad
+  // la fila en `product_variants` al guardar — sin esto, `cascade: true` solo
+  // cubre inserts/updates y la fila quedaba huérfana en Postgres en silencio.
+  @OneToMany(() => ProductVariantOrmEntity, (variant) => variant.product, {
+    cascade: true,
+    orphanedRowAction: "delete",
+  })
   variants!: ProductVariantOrmEntity[];
 
   @CreateDateColumn({ name: "created_at", type: "timestamptz" })

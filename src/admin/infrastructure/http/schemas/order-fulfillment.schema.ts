@@ -6,34 +6,57 @@ import { registry } from "../../../../shared-kernel/infrastructure/swagger/regis
 export const OrderFulfillmentParamsSchema = z.object({ orderNumber: z.string().min(1).max(30) });
 
 /**
- * [0047]: los tres estados de cumplimiento que el panel puede fijar, sacados
- * del enum de dominio y no de una lista escrita a mano (ver sección "Enums"
- * del CLAUDE.md del repo). PENDING, PAID y PAYMENT_FAILED quedan fuera a
+ * [0047]/[0060]: los cinco estados que el panel puede fijar, sacados del
+ * enum de dominio y no de una lista escrita a mano (ver sección "Enums" del
+ * CLAUDE.md del repo). PENDING, PAID y PAYMENT_FAILED quedan fuera a
  * propósito: los decide la pasarela, no una persona.
  */
 export const UpdateOrderFulfillmentStatusRequestSchema = z
   .object({
-    status: z.enum([OrderStatus.IN_PREPARATION, OrderStatus.SHIPPED, OrderStatus.DELIVERED]),
+    status: z.enum([
+      OrderStatus.IN_PREPARATION,
+      OrderStatus.SHIPPED,
+      OrderStatus.DELIVERED,
+      OrderStatus.CANCELLED,
+      OrderStatus.REFUNDED,
+    ]),
     carrierCode: z.string().min(1).max(40).nullable().optional().openapi({ example: "SERVIENTREGA" }),
     carrierName: z.string().min(1).max(100).nullable().optional().openapi({ example: "Servientrega" }),
     trackingNumber: z.string().min(1).max(60).nullable().optional().openapi({ example: "1234567890" }),
     trackingUrl: z.string().url().max(500).nullable().optional(),
+    reason: z.string().min(1).max(300).optional().openapi({
+      example: "El cliente pidió cancelar por cambio de dirección.",
+      description: "Obligatorio al cancelar o reembolsar ([0060]).",
+    }),
   })
   .superRefine((data, ctx) => {
     // La guía se pide acá y no se deja para después: un pedido "enviado" que
     // el comprador no puede rastrear es exactamente lo que [0047] viene a
     // evitar.
-    if (data.status !== OrderStatus.SHIPPED) {
-      return;
-    }
-    for (const field of ["carrierCode", "carrierName", "trackingNumber"] as const) {
-      if (!data[field]) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: "Al marcar el pedido como enviado hay que registrar transportadora y número de guía.",
-          path: [field],
-        });
+    if (data.status === OrderStatus.SHIPPED) {
+      for (const field of ["carrierCode", "carrierName", "trackingNumber"] as const) {
+        if (!data[field]) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Al marcar el pedido como enviado hay que registrar transportadora y número de guía.",
+            path: [field],
+          });
+        }
       }
+    }
+
+    // [0060]: cancelar/reembolsar sin motivo deja al historial sin poder
+    // explicar por qué — se valida acá para responder 400 antes de tocar el
+    // dominio, mismo criterio que la guía de envío.
+    if (
+      (data.status === OrderStatus.CANCELLED || data.status === OrderStatus.REFUNDED) &&
+      !data.reason?.trim()
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Para cancelar o reembolsar un pedido hay que indicar el motivo.",
+        path: ["reason"],
+      });
     }
   });
 

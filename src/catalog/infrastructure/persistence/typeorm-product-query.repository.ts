@@ -1,8 +1,11 @@
 import { DataSource, Repository, SelectQueryBuilder } from "typeorm";
+import { InventorySort } from "../../domain/enums/InventorySort";
 import { ProductSort } from "../../domain/enums/ProductSort";
 import { ProductStatus } from "../../domain/enums/ProductStatus";
-import { computeStockStatus } from "../../domain/enums/StockStatus";
+import { computeStockStatus, LOW_STOCK_THRESHOLD } from "../../domain/enums/StockStatus";
 import {
+  InventoryListFilter,
+  LowStockVariantPage,
   ProductFacetOption,
   ProductFilterFacets,
   ProductFilterFacetsFilter,
@@ -174,6 +177,69 @@ export class TypeOrmProductQueryRepository implements ProductQueryRepository {
     return products.map((product) => this.toListItem(product, maxStockByProductId.get(product.id) ?? 0));
   }
 
+  async findByIds(productIds: string[]): Promise<ProductListItem[]> {
+    if (productIds.length === 0) {
+      return [];
+    }
+
+    const products = await this.productOrmRepository
+      .createQueryBuilder("product")
+      .where("product.status = :status", { status: ProductStatus.ACTIVE })
+      .andWhere("product.id IN (:...productIds)", { productIds })
+      .getMany();
+
+    if (products.length === 0) {
+      return [];
+    }
+
+    const maxStockByProductId = await this.getMaxStockByProductId(products.map((product) => product.id));
+    const byId = new Map(
+      products.map((product) => [product.id, this.toListItem(product, maxStockByProductId.get(product.id) ?? 0)]),
+    );
+
+    // Se respeta el orden pedido (el que definió el admin), no el de la query.
+    return productIds.map((id) => byId.get(id)).filter((item): item is ProductListItem => item !== undefined);
+  }
+
+  async listTopSelling(limit: number): Promise<ProductListItem[]> {
+    const products = await this.productOrmRepository
+      .createQueryBuilder("product")
+      .where("product.status = :status", { status: ProductStatus.ACTIVE })
+      .andWhere(
+        "EXISTS (SELECT 1 FROM product_variants v WHERE v.product_id = product.id AND v.stock_quantity > 0)",
+      )
+      .orderBy("product.salesCount", "DESC")
+      .addOrderBy("product.createdAt", "DESC")
+      .take(limit)
+      .getMany();
+
+    if (products.length === 0) {
+      return [];
+    }
+
+    const maxStockByProductId = await this.getMaxStockByProductId(products.map((product) => product.id));
+    return products.map((product) => this.toListItem(product, maxStockByProductId.get(product.id) ?? 0));
+  }
+
+  async listNewest(limit: number): Promise<ProductListItem[]> {
+    const products = await this.productOrmRepository
+      .createQueryBuilder("product")
+      .where("product.status = :status", { status: ProductStatus.ACTIVE })
+      .andWhere(
+        "EXISTS (SELECT 1 FROM product_variants v WHERE v.product_id = product.id AND v.stock_quantity > 0)",
+      )
+      .orderBy("product.createdAt", "DESC")
+      .take(limit)
+      .getMany();
+
+    if (products.length === 0) {
+      return [];
+    }
+
+    const maxStockByProductId = await this.getMaxStockByProductId(products.map((product) => product.id));
+    return products.map((product) => this.toListItem(product, maxStockByProductId.get(product.id) ?? 0));
+  }
+
   async listFeaturedAndOnSale(limit: number): Promise<ProductListItem[]> {
     const products = await this.productOrmRepository
       .createQueryBuilder("product")
@@ -316,6 +382,100 @@ export class TypeOrmProductQueryRepository implements ProductQueryRepository {
     return new Map(rows.map((row) => [row.productId, Number(row.maxStock)]));
   }
 
+  async listLowStock(pagination: ProductListPagination): Promise<LowStockVariantPage> {
+    const query = this.baseVariantInventoryQuery()
+      .where("variant.stockQuantity <= COALESCE(variant.lowStockThreshold, :defaultThreshold)", {
+        defaultThreshold: LOW_STOCK_THRESHOLD,
+      })
+      .orderBy("variant.stockQuantity", "ASC");
+
+    return this.paginateVariantInventoryQuery(query, pagination);
+  }
+
+  /**
+   * [0059]: inventario general, sin filtrar por umbral por defecto — "ver y
+   * editar el stock de cada producto y variante" (AC), más amplio que la
+   * alerta de stock bajo. Los filtros (búsqueda, categoría, solo-stock-bajo)
+   * y el orden son para que el admin encuentre una variante puntual en un
+   * catálogo grande, en vez de hojear página por página.
+   */
+  async listAllVariants(
+    filter: InventoryListFilter,
+    pagination: ProductListPagination,
+  ): Promise<LowStockVariantPage> {
+    const query = this.baseVariantInventoryQuery();
+
+    if (filter.search) {
+      query.andWhere("(product.name ILIKE :search OR variant.sku ILIKE :search)", {
+        search: `%${filter.search}%`,
+      });
+    }
+    if (filter.categoryId) {
+      query.andWhere("product.categoryId = :categoryId", { categoryId: filter.categoryId });
+    }
+    if (filter.onlyLowStock) {
+      query.andWhere("variant.stockQuantity <= COALESCE(variant.lowStockThreshold, :defaultThreshold)", {
+        defaultThreshold: LOW_STOCK_THRESHOLD,
+      });
+    }
+
+    applyInventorySort(query, filter.sort ?? InventorySort.NAME_ASC);
+
+    return this.paginateVariantInventoryQuery(query, pagination);
+  }
+
+  private baseVariantInventoryQuery() {
+    return this.variantOrmRepository
+      .createQueryBuilder("variant")
+      .innerJoin("products", "product", "product.id = variant.productId")
+      .select("variant.id", "variantId")
+      .addSelect("product.id", "productId")
+      .addSelect("product.name", "productName")
+      .addSelect("variant.sku", "sku")
+      .addSelect("variant.size", "size")
+      .addSelect("variant.scent", "scent")
+      .addSelect("variant.color", "color")
+      .addSelect("variant.stockQuantity", "stockQuantity")
+      .addSelect("variant.lowStockThreshold", "lowStockThreshold");
+  }
+
+  private async paginateVariantInventoryQuery(
+    query: SelectQueryBuilder<ProductVariantOrmEntity>,
+    pagination: ProductListPagination,
+  ): Promise<LowStockVariantPage> {
+    query.skip((pagination.page - 1) * pagination.limit).take(pagination.limit);
+
+    const [rows, total] = await Promise.all([
+      query.getRawMany<{
+        variantId: string;
+        productId: string;
+        productName: string;
+        sku: string;
+        size: string | null;
+        scent: string | null;
+        color: string | null;
+        stockQuantity: number;
+        lowStockThreshold: number | null;
+      }>(),
+      query.getCount(),
+    ]);
+
+    return {
+      items: rows.map((row) => ({
+        productId: row.productId,
+        productName: row.productName,
+        variantId: row.variantId,
+        sku: row.sku,
+        variantLabel:
+          [row.size, row.scent, row.color].filter((part): part is string => Boolean(part)).join(", ") ||
+          null,
+        stockQuantity: Number(row.stockQuantity),
+        lowStockThreshold: row.lowStockThreshold != null ? Number(row.lowStockThreshold) : null,
+      })),
+      total,
+    };
+  }
+
   private toListItem(product: ProductOrmEntity, maxVariantStock: number): ProductListItem {
     return {
       id: product.id,
@@ -327,4 +487,32 @@ export class TypeOrmProductQueryRepository implements ProductQueryRepository {
       stockStatus: computeStockStatus(maxVariantStock),
     };
   }
+}
+
+/**
+ * [0059]: orden del inventario. Se agrega siempre `variant.sku` como
+ * desempate para que la paginación sea estable — sin un desempate
+ * determinístico, dos páginas consecutivas pueden repetir o saltarse filas
+ * cuando hay stock/nombres empatados.
+ */
+function applyInventorySort(
+  query: SelectQueryBuilder<ProductVariantOrmEntity>,
+  sort: InventorySort,
+): void {
+  switch (sort) {
+    case InventorySort.STOCK_ASC:
+      query.orderBy("variant.stockQuantity", "ASC");
+      break;
+    case InventorySort.STOCK_DESC:
+      query.orderBy("variant.stockQuantity", "DESC");
+      break;
+    case InventorySort.NAME_DESC:
+      query.orderBy("product.name", "DESC");
+      break;
+    case InventorySort.NAME_ASC:
+    default:
+      query.orderBy("product.name", "ASC");
+      break;
+  }
+  query.addOrderBy("variant.sku", "ASC");
 }

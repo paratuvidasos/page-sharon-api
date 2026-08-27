@@ -80,6 +80,20 @@ export interface OrderHistoryPage {
 }
 
 /**
+ * [0060]: listado admin — sin el condicionamiento por dueño de
+ * `OrderHistoryFilter` (el admin ve pedidos de cualquiera). `userId` es
+ * opcional y sirve para el detalle de pedidos de un cliente desde [0063]
+ * (`GET /admin/orders?userId=...`), reusando este mismo listado.
+ */
+export interface AdminOrderListFilter {
+  status?: OrderStatus;
+  dateFrom?: Date;
+  dateTo?: Date;
+  paymentMethod?: PaymentMethod;
+  userId?: string;
+}
+
+/**
  * Read model de solo lectura para el historial de pedidos — devuelve un DTO
  * plano en vez del agregado Order completo (ver sección "Queries" del
  * CLAUDE.md del repo).
@@ -101,4 +115,35 @@ export interface OrderQueryRepository {
    * dejaría "compra verificada" inalcanzable en la práctica.
    */
   hasUserPurchasedProduct(userId: string, productId: string): Promise<boolean>;
+
+  /**
+   * [0057]: puerto que `catalog` consume (vía `HasProductBeenOrdered`) para
+   * decidir si `DeleteProduct` puede borrar de verdad o tiene que archivar.
+   * Mismo criterio de "pedido real" que `hasUserPurchasedProduct`
+   * (`PURCHASED_ORDER_STATUSES`): un producto que solo tuvo pedidos
+   * cancelados o con el pago fallido no tiene historial que proteger.
+   */
+  hasProductBeenOrdered(productId: string): Promise<boolean>;
+
+  /**
+   * [0060]: listado de pedidos para el panel administrativo, filtrable por
+   * estado, fecha y método de pago (AC de "Ver listado de pedidos y
+   * gestionar su estado").
+   */
+  listForAdmin(filter: AdminOrderListFilter, pagination: OrderHistoryPagination): Promise<OrderHistoryPage>;
+
+  /**
+   * [0063]: resumen de compras por cliente para el listado admin de
+   * `accounts` — batcheado por página de usuarios, escopado a
+   * `PURCHASED_ORDER_STATUSES` (mismo criterio que el resto del módulo: un
+   * pedido cancelado/reembolsado no cuenta como "compra"). Un `userId` sin
+   * pedidos simplemente no aparece en el mapa devuelto.
+   */
+  getSummaryForUsers(userIds: string[]): Promise<Map<string, CustomerOrderSummary>>;
+}
+
+export interface CustomerOrderSummary {
+  orderCount: number;
+  totalSpent: number;
+  lastOrderAt: Date;
 }

@@ -12,10 +12,16 @@ import { domainEventBus } from "../../../shared-kernel/infrastructure/events/InM
 import { buildAuthenticate } from "../../../shared-kernel/infrastructure/http/authenticate.middleware";
 import { buildOptionalAuthenticate } from "../../../shared-kernel/infrastructure/http/optional-authenticate.middleware";
 import { JwtTokenService } from "../../../shared-kernel/infrastructure/security/JwtTokenService";
+import { AdminGetOrderByNumber } from "../../application/use-cases/AdminGetOrderByNumber";
+import { AdminListOrders } from "../../application/use-cases/AdminListOrders";
 import { AnonymizeUserOrders } from "../../application/use-cases/AnonymizeUserOrders";
 import { ConfirmOrderPayment } from "../../application/use-cases/ConfirmOrderPayment";
+import { ExportSalesReportCsv } from "../../application/use-cases/ExportSalesReportCsv";
 import { GetOrderByNumber } from "../../application/use-cases/GetOrderByNumber";
+import { GetOrderSummaryForUsers } from "../../application/use-cases/GetOrderSummaryForUsers";
+import { GetSalesReport } from "../../application/use-cases/GetSalesReport";
 import { GetOrderHistory } from "../../application/use-cases/GetOrderHistory";
+import { HasProductBeenOrdered } from "../../application/use-cases/HasProductBeenOrdered";
 import { HasUserPurchasedProduct } from "../../application/use-cases/HasUserPurchasedProduct";
 import { RejectOrderPayment } from "../../application/use-cases/RejectOrderPayment";
 import { RetryOrderPayment } from "../../application/use-cases/RetryOrderPayment";
@@ -32,6 +38,7 @@ import { ShippingRestrictionPort } from "../../application/ports/ShippingRestric
 import { ReserveStockPort, ResolveStockReservationPort } from "../../application/ports/StockReservationPort";
 import { TypeOrmOrderQueryRepository } from "../persistence/typeorm-order-query.repository";
 import { TypeOrmOrderRepository } from "../persistence/typeorm-order.repository";
+import { TypeOrmSalesReportQueryRepository } from "../persistence/typeorm-sales-report-query.repository";
 import { OrdersController } from "./orders.controller";
 import { buildOrdersRoutes } from "./orders.routes";
 
@@ -52,6 +59,8 @@ export interface OrdersModuleDependencies {
   reserveStockPort: ReserveStockPort;
   commitStockReservationPort: ResolveStockReservationPort;
   releaseStockReservationPort: ResolveStockReservationPort;
+  /** [0060]: revierte el stock de un pedido ya pagado que se cancela/reembolsa. */
+  reverseCommittedStockPort: ResolveStockReservationPort;
   paymentSessionPort: PaymentSessionPort;
   exchangeRateProvider: ExchangeRateProvider;
   emailSender: EmailSender;
@@ -64,6 +73,16 @@ export interface OrdersModuleDependencies {
 export interface OrdersModule {
   router: Router;
   hasUserPurchasedProduct: HasUserPurchasedProduct;
+  /** [0057]: lo consume `catalog` para decidir si `DeleteProduct` borra o archiva. */
+  hasProductBeenOrdered: HasProductBeenOrdered;
+  /** [0060]: listado y detalle de pedidos para el panel administrativo. */
+  adminListOrders: AdminListOrders;
+  adminGetOrderByNumber: AdminGetOrderByNumber;
+  /** [0062]: reportes de ventas para el panel administrativo. */
+  getSalesReport: GetSalesReport;
+  exportSalesReportCsv: ExportSalesReportCsv;
+  /** [0063]: puerto que `accounts` consume para el resumen de compras del listado de clientes. */
+  getOrderSummaryForUsers: GetOrderSummaryForUsers;
   /** [0047]: lo monta el módulo `admin` como `PATCH /admin/orders/:orderNumber/status`. */
   updateOrderFulfillmentStatus: UpdateOrderFulfillmentStatus;
 }
@@ -78,6 +97,13 @@ export function buildOrdersModule(
   const getOrderHistory = new GetOrderHistory(orderQueryRepository, deps.customerContactPort);
   const getOrderByNumber = new GetOrderByNumber(orderRepository, deps.customerContactPort);
   const hasUserPurchasedProduct = new HasUserPurchasedProduct(orderQueryRepository);
+  const hasProductBeenOrdered = new HasProductBeenOrdered(orderQueryRepository);
+  const adminListOrders = new AdminListOrders(orderQueryRepository);
+  const adminGetOrderByNumber = new AdminGetOrderByNumber(orderRepository);
+  const salesReportQueryRepository = new TypeOrmSalesReportQueryRepository(dataSource);
+  const getSalesReport = new GetSalesReport(salesReportQueryRepository);
+  const exportSalesReportCsv = new ExportSalesReportCsv(salesReportQueryRepository);
+  const getOrderSummaryForUsers = new GetOrderSummaryForUsers(orderQueryRepository);
 
   const startCheckout = new StartCheckout(
     orderRepository,
@@ -154,10 +180,18 @@ export function buildOrdersModule(
   return {
     router: buildOrdersRoutes(controller, authenticate, optionalAuthenticate),
     hasUserPurchasedProduct,
+    hasProductBeenOrdered,
+    adminListOrders,
+    adminGetOrderByNumber,
+    getSalesReport,
+    exportSalesReportCsv,
+    getOrderSummaryForUsers,
     updateOrderFulfillmentStatus: new UpdateOrderFulfillmentStatus(
       orderRepository,
       deps.customerContactPort,
       domainEventBus,
+      deps.releaseStockReservationPort,
+      deps.reverseCommittedStockPort,
     ),
   };
 }

@@ -131,13 +131,16 @@ export class StartCheckout {
     // fijo (que está en pesos) descuente lo que debe, y su resultado se
     // convierte igual que todo lo demás.
     const exchangeRate = await this.exchangeRateProvider.getRate(BASE_CURRENCY, input.currency);
-    const subtotalInBaseCurrency = lines.reduce(
-      (sum, line) => sum + line.unitPrice * line.quantity,
-      0,
-    );
 
     const coupon = input.couponCode
-      ? await this.couponPort.execute({ code: input.couponCode, subtotal: subtotalInBaseCurrency })
+      ? await this.couponPort.execute({
+          code: input.couponCode,
+          lines: lines.map((line) => ({
+            productId: line.productId,
+            quantity: line.quantity,
+            unitPrice: line.unitPrice,
+          })),
+        })
       : null;
 
     const chargedLines = lines.map((line) => ({

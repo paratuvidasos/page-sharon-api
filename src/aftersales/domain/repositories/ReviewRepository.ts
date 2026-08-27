@@ -10,4 +10,7 @@ export interface ReviewRepository {
 
   /** Evita reseñas duplicadas del mismo usuario sobre el mismo producto. */
   existsForProductAndUser(productId: string, userId: string): Promise<boolean>;
+
+  /** [0064]: hidrata la reseña para que el admin pueda moderarla (approve/reject/hide). */
+  findById(id: string): Promise<Review | null>;
 }

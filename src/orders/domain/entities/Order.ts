@@ -39,6 +39,15 @@ export interface OrderStatusChange {
   status: OrderStatus;
   changedAt: Date;
   note: string | null;
+  /**
+   * [0060]: quién hizo el cambio, para "cada cambio de estado queda
+   * registrado con fecha y usuario administrador que lo realizó" (AC). Es un
+   * snapshot de texto (el email del admin al momento del cambio), no una FK a
+   * `accounts` — mismo criterio que `shippingAddress`: evita un join
+   * cruzando módulos (regla 4 del CLAUDE.md del repo). `null` en las
+   * transiciones que dispara el propio sistema (pago aprobado, reintento).
+   */
+  changedByAdminLabel: string | null;
 }
 
 export interface MarkShippedInput {
@@ -131,8 +140,13 @@ export class Order {
 
   private constructor(private props: OrderProps) {}
 
-  private recordStatusChange(status: OrderStatus, changedAt: Date, note: string | null): void {
-    const change: OrderStatusChange = { status, changedAt, note };
+  private recordStatusChange(
+    status: OrderStatus,
+    changedAt: Date,
+    note: string | null,
+    changedByAdminLabel: string | null = null,
+  ): void {
+    const change: OrderStatusChange = { status, changedAt, note, changedByAdminLabel };
     this.props.statusHistory = [...this.props.statusHistory, change];
     this.newStatusChanges.push(change);
   }
@@ -323,6 +337,61 @@ export class Order {
     this.props.status = OrderStatus.DELIVERED;
     this.props.shipment = { ...this.props.shipment, deliveredAt };
     this.recordStatusChange(OrderStatus.DELIVERED, deliveredAt, null);
+  }
+
+  /**
+   * [0060]: cancelación desde el panel administrativo. Válida desde PENDING,
+   * PAID o IN_PREPARATION — un pedido ya SHIPPED/DELIVERED no se "cancela",
+   * se reembolsa (`refund`): la mercancía ya salió o llegó, cancelar no
+   * describe lo que hay que hacer con ella.
+   */
+  cancel(changedAt: Date, reason: string, adminLabel: string | null): void {
+    const cancellableFrom: OrderStatus[] = [
+      OrderStatus.PENDING,
+      OrderStatus.PAID,
+      OrderStatus.IN_PREPARATION,
+    ];
+    if (!cancellableFrom.includes(this.props.status)) {
+      throw new InvalidOrderStatusTransitionException(this.props.status, OrderStatus.CANCELLED);
+    }
+    this.props.status = OrderStatus.CANCELLED;
+    this.recordStatusChange(OrderStatus.CANCELLED, changedAt, reason, adminLabel);
+  }
+
+  /**
+   * [0060]: reembolso desde el panel administrativo. Válido desde PAID en
+   * adelante (incluida una entrega ya hecha) — antes de PAID no hay nada que
+   * reembolsar, para eso está `cancel`.
+   */
+  refund(changedAt: Date, reason: string, adminLabel: string | null): void {
+    const refundableFrom: OrderStatus[] = [
+      OrderStatus.PAID,
+      OrderStatus.IN_PREPARATION,
+      OrderStatus.SHIPPED,
+      OrderStatus.DELIVERED,
+    ];
+    if (!refundableFrom.includes(this.props.status)) {
+      throw new InvalidOrderStatusTransitionException(this.props.status, OrderStatus.REFUNDED);
+    }
+    this.props.status = OrderStatus.REFUNDED;
+    this.recordStatusChange(OrderStatus.REFUNDED, changedAt, reason, adminLabel);
+  }
+
+  /**
+   * [0060]: si el pedido ya había pasado por PAID, su reserva de stock está
+   * `COMMITTED` y hay que revertirla (`ReverseCommittedStock`) en vez de
+   * simplemente liberarla (`ReleaseStockReservation`, que solo aplica a
+   * reservas `HELD`). Se evalúa contra el estado ANTERIOR al cambio, no el
+   * actual (ya es CANCELLED/REFUNDED en ambos casos).
+   */
+  static hadCommittedStock(previousStatus: OrderStatus): boolean {
+    const paidStatuses: OrderStatus[] = [
+      OrderStatus.PAID,
+      OrderStatus.IN_PREPARATION,
+      OrderStatus.SHIPPED,
+      OrderStatus.DELIVERED,
+    ];
+    return paidStatuses.includes(previousStatus);
   }
 
   get shipment(): OrderShipmentSnapshot | null {
