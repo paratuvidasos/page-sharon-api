@@ -16,11 +16,19 @@ export interface CategoryListPage {
 }
 
 /**
- * Solo lectura: no hay ningún caso de uso de creación/edición de categorías
- * en el backlog [0013]-[0022] (eso es CRUD de admin, fuera de alcance), así
- * que no existe un `CategoryRepository` de escritura — solo este read model
- * (ver sección "Queries" del CLAUDE.md del repo).
+ * Read model de categorías para el catálogo público. Desde [0058] también
+ * existe `CategoryRepository` (puerto de escritura) para el CRUD del panel
+ * administrativo — este repositorio se mantiene aparte porque sigue siendo
+ * el que usa el listado público, más liviano que hidratar el agregado
+ * completo (ver sección "Queries" del CLAUDE.md del repo).
  */
 export interface CategoryQueryRepository {
   listAll(pagination: CategoryListPagination): Promise<CategoryListPage>;
+
+  /**
+   * [0058]: cuántos productos ACTIVE tienen esta categoría — respalda el
+   * guard de `DeleteCategory` ("no se puede eliminar una categoría con
+   * productos activos asociados sin reasignarlos primero").
+   */
+  countActiveProducts(categoryId: string): Promise<number>;
 }
