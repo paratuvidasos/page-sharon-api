@@ -72,6 +72,43 @@ export class TypeOrmShippingZoneQueryRepository implements ShippingZoneQueryRepo
     return { items, total };
   }
 
+  async getById(id: string): Promise<ShippingZoneReadModel | null> {
+    const zone = await this.zoneRepository.findOne({ where: { id } });
+    if (!zone) {
+      return null;
+    }
+
+    const [rates, restrictions] = await Promise.all([
+      this.dataSource.getRepository(ShippingRateOrmEntity).find({ where: { zoneId: id }, order: { cost: "ASC" } }),
+      this.dataSource.getRepository(ShippingZoneProductRestrictionOrmEntity).find({ where: { zoneId: id } }),
+    ]);
+
+    return {
+      id: zone.id,
+      name: zone.name,
+      countryCode: zone.countryCode,
+      stateProvinces: zone.stateProvinces,
+      postalCodePatterns: zone.postalCodePatterns,
+      priority: zone.priority,
+      isActive: zone.isActive,
+      rates: rates.map((rate) => ({
+        method: rate.method,
+        label: rate.label,
+        cost: Number(rate.cost),
+        currency: rate.currency,
+        estimatedMinDays: rate.estimatedMinDays,
+        estimatedMaxDays: rate.estimatedMaxDays,
+        freeShippingThreshold:
+          rate.freeShippingThreshold == null ? null : Number(rate.freeShippingThreshold),
+        isActive: rate.isActive,
+      })),
+      restrictedProducts: restrictions.map((restriction) => ({
+        productId: restriction.productId,
+        reason: restriction.reason,
+      })),
+    };
+  }
+
   /**
    * Solo zonas activas con al menos una tarifa activa: una zona sin tarifas
    * cotizables no es cobertura real, y anunciarla haría que la calculadora

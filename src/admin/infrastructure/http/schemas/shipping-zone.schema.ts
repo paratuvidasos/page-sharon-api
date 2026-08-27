@@ -122,6 +122,22 @@ registry.registerPath({
 });
 
 registry.registerPath({
+  method: "get",
+  path: "/admin/shipping/zones/{id}",
+  tags: ["admin"],
+  summary: "Detalle de una zona de cobertura, para precargar el formulario de edición (solo administradores)",
+  security: [{ bearerAuth: [] }],
+  request: { params: ShippingZoneParamsSchema },
+  responses: {
+    200: {
+      description: "Detalle de la zona.",
+      content: { "application/json": { schema: ShippingZoneResponseSchema } },
+    },
+    404: { description: "La zona no existe." },
+  },
+});
+
+registry.registerPath({
   method: "post",
   path: "/admin/shipping/zones",
   tags: ["admin"],
