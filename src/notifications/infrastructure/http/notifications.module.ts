@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { DataSource } from "typeorm";
 import { OrderStatusChanged } from "../../../shared-kernel/domain/events/OrderStatusChanged";
+import { ReviewRejected } from "../../../shared-kernel/domain/events/ReviewRejected";
 import { EmailSender } from "../../../shared-kernel/domain/ports/EmailSender";
 import { domainEventBus } from "../../../shared-kernel/infrastructure/events/InMemoryDomainEventBus";
 import { buildAuthenticate } from "../../../shared-kernel/infrastructure/http/authenticate.middleware";
@@ -11,6 +12,7 @@ import { ListNotifications } from "../../application/use-cases/ListNotifications
 import { MarkAllNotificationsRead } from "../../application/use-cases/MarkAllNotificationsRead";
 import { MarkNotificationRead } from "../../application/use-cases/MarkNotificationRead";
 import { NotifyOrderStatusChanged } from "../../application/use-cases/NotifyOrderStatusChanged";
+import { NotifyReviewRejected } from "../../application/use-cases/NotifyReviewRejected";
 import { UpdateNotificationPreferences } from "../../application/use-cases/UpdateNotificationPreferences";
 import { TypeOrmNotificationPreferenceRepository } from "../persistence/typeorm-notification-preference.repository";
 import { TypeOrmNotificationQueryRepository } from "../persistence/typeorm-notification-query.repository";
@@ -50,6 +52,22 @@ export function buildNotificationsModule(dataSource: DataSource, emailSender: Em
       carrierName: changed.carrierName,
       trackingNumber: changed.trackingNumber,
       trackingUrl: changed.trackingUrl,
+    });
+  });
+
+  const notifyReviewRejected = new NotifyReviewRejected(
+    notificationRepository,
+    preferenceRepository,
+    emailSender,
+    process.env.FRONTEND_URL ?? DEFAULT_FRONTEND_URL,
+  );
+
+  domainEventBus.subscribe(ReviewRejected.eventName, async (event) => {
+    const rejected = event as ReviewRejected;
+    await notifyReviewRejected.execute({
+      userId: rejected.userId,
+      recipientEmail: rejected.recipientEmail,
+      reason: rejected.reason,
     });
   });
 

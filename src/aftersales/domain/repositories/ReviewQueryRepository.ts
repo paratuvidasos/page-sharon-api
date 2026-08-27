@@ -1,4 +1,5 @@
 import { ReviewSort } from "../enums/ReviewSort";
+import { ReviewStatus } from "../enums/ReviewStatus";
 
 export interface ReviewListItem {
   id: string;
@@ -6,6 +7,26 @@ export interface ReviewListItem {
   rating: number;
   comment: string;
   createdAt: Date;
+}
+
+export interface ModerationReviewItem {
+  id: string;
+  productId: string;
+  userId: string;
+  rating: number;
+  comment: string;
+  status: ReviewStatus;
+  rejectionReason: string | null;
+  createdAt: Date;
+}
+
+export interface ModerationListFilter {
+  status?: ReviewStatus;
+}
+
+export interface ModerationListPage {
+  items: ModerationReviewItem[];
+  total: number;
 }
 
 export interface ReviewListPagination {
@@ -29,11 +50,18 @@ export interface RatingSummary {
  * repo).
  */
 export interface ReviewQueryRepository {
+  /**
+   * [0064]: solo reseñas `APPROVED` — con moderación activada, una reseña
+   * `PENDING`/`REJECTED`/`HIDDEN` no debe llegar al catálogo público.
+   */
   listForProduct(
     productId: string,
     sort: ReviewSort,
     pagination: ReviewListPagination,
   ): Promise<ReviewListPage>;
+
+  /** [0064]: cola de moderación del panel administrativo. */
+  listForModeration(filter: ModerationListFilter, pagination: ReviewListPagination): Promise<ModerationListPage>;
 
   getRatingSummaryForProduct(productId: string): Promise<RatingSummary>;
 

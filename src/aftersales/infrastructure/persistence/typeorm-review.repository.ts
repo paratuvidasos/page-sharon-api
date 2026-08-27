@@ -20,4 +20,9 @@ export class TypeOrmReviewRepository implements ReviewRepository {
     const count = await this.ormRepository.countBy({ productId, userId });
     return count > 0;
   }
+
+  async findById(id: string): Promise<Review | null> {
+    const orm = await this.ormRepository.findOne({ where: { id } });
+    return orm ? ReviewMapper.toDomain(orm) : null;
+  }
 }
