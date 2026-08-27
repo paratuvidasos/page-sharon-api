@@ -95,6 +95,7 @@ export class TypeOrmStockReservationRepository implements StockReservationReposi
         manager,
         "reference_id = $1 AND status = $2",
         [referenceId, StockReservationStatus.HELD],
+        StockReservationStatus.RELEASED,
       );
     });
   }
@@ -105,6 +106,24 @@ export class TypeOrmStockReservationRepository implements StockReservationReposi
         manager,
         "status = $1 AND expires_at <= $2",
         [StockReservationStatus.HELD, now],
+        StockReservationStatus.RELEASED,
+      );
+    });
+  }
+
+  /**
+   * [0059]/[0060]: mismo mecanismo que `release`, pero sobre reservas
+   * `COMMITTED` (pedido ya pagado) — el pedido se canceló o reembolsó
+   * después de pagado, así que el stock que ya se había dado por vendido
+   * vuelve a estar disponible.
+   */
+  async releaseCommitted(referenceId: string): Promise<void> {
+    await this.dataSource.transaction(async (manager) => {
+      await this.giveBackStock(
+        manager,
+        "reference_id = $1 AND status = $2",
+        [referenceId, StockReservationStatus.COMMITTED],
+        StockReservationStatus.REVERSED,
       );
     });
   }
@@ -121,11 +140,12 @@ export class TypeOrmStockReservationRepository implements StockReservationReposi
     manager: EntityManager,
     condition: string,
     params: unknown[],
+    targetStatus: StockReservationStatus,
   ): Promise<number> {
     const released = returnedRows<{ variant_id: string; quantity: number }>(
       await manager.query(
         `UPDATE stock_reservations
-            SET status = '${StockReservationStatus.RELEASED}', resolved_at = now()
+            SET status = '${targetStatus}', resolved_at = now()
           WHERE ${condition}
           RETURNING variant_id, quantity`,
         params,

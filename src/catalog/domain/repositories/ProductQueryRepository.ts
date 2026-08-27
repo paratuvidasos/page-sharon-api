@@ -1,3 +1,4 @@
+import { InventorySort } from "../enums/InventorySort";
 import { ProductSort } from "../enums/ProductSort";
 import { ProductStatus } from "../enums/ProductStatus";
 import { StockStatus } from "../enums/StockStatus";
@@ -90,6 +91,21 @@ export interface ProductVariantSnapshot {
   heightCm: number | null;
 }
 
+export interface LowStockVariantItem {
+  productId: string;
+  productName: string;
+  variantId: string;
+  sku: string;
+  variantLabel: string | null;
+  stockQuantity: number;
+  lowStockThreshold: number | null;
+}
+
+export interface LowStockVariantPage {
+  items: LowStockVariantItem[];
+  total: number;
+}
+
 /**
  * Read model de solo lectura para el listado de catálogo — devuelve DTOs
  * planos en vez del agregado `Product` completo (ver sección "Queries" del
@@ -142,4 +158,48 @@ export interface ProductQueryRepository {
    * catálogo vigente.
    */
   findVariantSnapshots(variantIds: string[]): Promise<ProductVariantSnapshot[]>;
+
+  /**
+   * [0066]: productos activos por id, en el orden pedido — respalda el modo
+   * `MANUAL` de destacados de home (`HomepageFeaturedConfig.manualProductIds`).
+   * Un id que no exista o no esté ACTIVE simplemente no aparece en el
+   * resultado.
+   */
+  findByIds(productIds: string[]): Promise<ProductListItem[]>;
+
+  /** [0066]: regla automática "más vendidos" de destacados de home. Excluye sin stock, igual que `findRelatedProducts`. */
+  listTopSelling(limit: number): Promise<ProductListItem[]>;
+
+  /** [0066]: regla automática "novedades" de destacados de home. Excluye sin stock, igual que `findRelatedProducts`. */
+  listNewest(limit: number): Promise<ProductListItem[]>;
+
+  /**
+   * [0059]: variantes en `stock_quantity <= COALESCE(low_stock_threshold, 5)`
+   * — respalda el listado admin `GET /admin/inventory/low-stock` (pull, sin
+   * notificación push, decisión confirmada con el usuario). Incluye
+   * agotadas (`stock_quantity = 0`): es el caso más urgente de "stock bajo".
+   */
+  listLowStock(pagination: ProductListPagination): Promise<LowStockVariantPage>;
+
+  /**
+   * [0059]: inventario general — todas las variantes con su stock, sin
+   * filtrar por umbral por defecto. Respalda "ver y editar el stock de cada
+   * producto y variante" (AC), que es más amplio que la alerta de stock bajo
+   * (`listLowStock` es solo el subconjunto en alerta). Los filtros y el
+   * orden son para que el admin pueda encontrar una variante puntual en un
+   * catálogo grande, no solo hojear página por página.
+   */
+  listAllVariants(
+    filter: InventoryListFilter,
+    pagination: ProductListPagination,
+  ): Promise<LowStockVariantPage>;
+}
+
+export interface InventoryListFilter {
+  /** Coincidencia parcial contra el nombre del producto o el SKU de la variante. */
+  search?: string;
+  categoryId?: string;
+  /** Mismo criterio que `listLowStock`: stock <= umbral (5 por defecto, o el configurado por variante). */
+  onlyLowStock?: boolean;
+  sort?: InventorySort;
 }

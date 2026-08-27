@@ -57,6 +57,7 @@ export class ProductMapper {
     orm.color = props.color;
     orm.priceOverride = props.priceOverride != null ? props.priceOverride.amount.toFixed(2) : null;
     orm.stockQuantity = props.stockQuantity;
+    orm.lowStockThreshold = props.lowStockThreshold;
     orm.imageUrl = props.imageUrl;
     orm.weightGrams = props.parcel.weightGrams;
     orm.lengthCm = props.parcel.lengthCm != null ? props.parcel.lengthCm.toFixed(2) : null;
@@ -74,6 +75,7 @@ export class ProductMapper {
       color: orm.color,
       priceOverride: orm.priceOverride != null ? Money.of(Number(orm.priceOverride)) : null,
       stockQuantity: orm.stockQuantity,
+      lowStockThreshold: orm.lowStockThreshold,
       imageUrl: orm.imageUrl,
       parcel: {
         weightGrams: orm.weightGrams,
