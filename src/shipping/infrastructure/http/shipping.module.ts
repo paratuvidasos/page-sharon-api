@@ -6,6 +6,7 @@ import { CreateShippingZone } from "../../application/use-cases/CreateShippingZo
 import { DeleteShippingZone } from "../../application/use-cases/DeleteShippingZone";
 import { GetShippingOptions } from "../../application/use-cases/GetShippingOptions";
 import { ListShippingCoverage } from "../../application/use-cases/ListShippingCoverage";
+import { GetShippingZoneById } from "../../application/use-cases/GetShippingZoneById";
 import { ListShippingZones } from "../../application/use-cases/ListShippingZones";
 import { QuoteShippingMethod } from "../../application/use-cases/QuoteShippingMethod";
 import { ProductParcelPort } from "../../application/ports/ProductParcelPort";
@@ -33,6 +34,7 @@ export interface ShippingModule {
   updateShippingZone: UpdateShippingZone;
   deleteShippingZone: DeleteShippingZone;
   listShippingZones: ListShippingZones;
+  getShippingZoneById: GetShippingZoneById;
   setZoneProductRestrictions: SetZoneProductRestrictions;
 }
 
@@ -67,6 +69,7 @@ export function buildShippingModule(
     updateShippingZone: new UpdateShippingZone(shippingZoneRepository),
     deleteShippingZone: new DeleteShippingZone(shippingZoneRepository),
     listShippingZones: new ListShippingZones(shippingZoneQueryRepository),
+    getShippingZoneById: new GetShippingZoneById(shippingZoneQueryRepository),
     setZoneProductRestrictions: new SetZoneProductRestrictions(shippingZoneRepository),
   };
 }
