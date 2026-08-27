@@ -132,6 +132,11 @@ export const OrderStatusChangeResponseSchema = z.object({
     example: "1234567890",
     description: "Detalle del cambio: número de guía, motivo del rechazo, etc.",
   }),
+  changedByAdminLabel: z.string().nullable().optional().openapi({
+    example: "admin@sharon.com",
+    description:
+      "[0060]: email del admin que hizo el cambio, null en transiciones del sistema. Solo se expone en los endpoints del panel administrativo — el detalle de pedido del cliente lo omite.",
+  }),
 });
 
 export const OrderSummaryResponseSchema = z.object({

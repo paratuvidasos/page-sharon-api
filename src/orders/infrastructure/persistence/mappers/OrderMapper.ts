@@ -73,6 +73,7 @@ export class OrderMapper {
       historyOrm.orderId = orderId;
       historyOrm.status = change.status;
       historyOrm.note = change.note;
+      historyOrm.changedByAdminLabel = change.changedByAdminLabel;
       historyOrm.changedAt = change.changedAt;
       return historyOrm;
     });
@@ -135,6 +136,7 @@ export class OrderMapper {
         status: change.status,
         changedAt: change.changedAt,
         note: change.note,
+        changedByAdminLabel: change.changedByAdminLabel,
       })),
       placedAt: orderOrm.placedAt,
       paidAt: orderOrm.paidAt,

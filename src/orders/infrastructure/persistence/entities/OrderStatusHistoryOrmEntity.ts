@@ -29,6 +29,11 @@ export class OrderStatusHistoryOrmEntity {
   @Column({ type: "varchar", length: 200, nullable: true })
   note!: string | null;
 
+  // [0060]: snapshot de texto (email del admin), no FK — ver comentario en
+  // `Order.OrderStatusChange`. `null` en transiciones que dispara el sistema.
+  @Column({ name: "changed_by_admin_label", type: "varchar", length: 200, nullable: true })
+  changedByAdminLabel!: string | null;
+
   @Column({ name: "changed_at", type: "timestamptz" })
   changedAt!: Date;
 }
