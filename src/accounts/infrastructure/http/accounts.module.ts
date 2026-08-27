@@ -4,7 +4,7 @@ import { domainEventBus } from "../../../shared-kernel/infrastructure/events/InM
 import { buildEmailSender } from "../../../shared-kernel/infrastructure/email/build-email-sender";
 import { buildAuthenticate } from "../../../shared-kernel/infrastructure/http/authenticate.middleware";
 import { JwtTokenService } from "../../../shared-kernel/infrastructure/security/JwtTokenService";
-import { LocalFileStorage } from "../../../shared-kernel/infrastructure/storage/LocalFileStorage";
+import { buildFileStorage } from "../../../shared-kernel/infrastructure/storage/build-file-storage";
 import { AddAddress } from "../../application/use-cases/addresses/AddAddress";
 import { ArchiveAddress } from "../../application/use-cases/addresses/ArchiveAddress";
 import { DeleteAddress } from "../../application/use-cases/addresses/DeleteAddress";
@@ -23,6 +23,9 @@ import { ResetPassword } from "../../application/use-cases/password-reset/ResetP
 import { RestoreAddress } from "../../application/use-cases/addresses/RestoreAddress";
 import { SetDefaultShippingAddress } from "../../application/use-cases/addresses/SetDefaultShippingAddress";
 import { UpdateAddress } from "../../application/use-cases/addresses/UpdateAddress";
+import { ListCustomers, GetOrderSummaryForUsersPort } from "../../application/use-cases/admin/ListCustomers";
+import { ReactivateCustomer } from "../../application/use-cases/admin/ReactivateCustomer";
+import { SuspendCustomer } from "../../application/use-cases/admin/SuspendCustomer";
 import { GetCustomerContact } from "../../application/use-cases/profile/GetCustomerContact";
 import { GetProfile } from "../../application/use-cases/profile/GetProfile";
 import { UpdateProfile } from "../../application/use-cases/profile/UpdateProfile";
@@ -31,6 +34,7 @@ import { BcryptPasswordHasher } from "../security/BcryptPasswordHasher";
 import { TypeOrmEmailVerificationTokenRepository } from "../persistence/registration/typeorm-email-verification-token.repository";
 import { TypeOrmPasswordResetTokenRepository } from "../persistence/password-reset/typeorm-password-reset-token.repository";
 import { TypeOrmRefreshTokenRepository } from "../persistence/session/typeorm-refresh-token.repository";
+import { TypeOrmUserQueryRepository } from "../persistence/typeorm-user-query.repository";
 import { TypeOrmUserRepository } from "../persistence/typeorm-user.repository";
 import { AccountsController } from "./accounts.controller";
 import { buildAccountsRoutes } from "./accounts.routes";
@@ -44,20 +48,25 @@ export interface AccountsModule {
   getAddressById: GetAddressById;
   /** Correo y nombre del comprador con sesión, para la pasarela y el correo de confirmación. */
   getCustomerContact: GetCustomerContact;
+  /** [0063]: listado de clientes y bloqueo/reactivación para el panel administrativo. */
+  listCustomers: ListCustomers;
+  suspendCustomer: SuspendCustomer;
+  reactivateCustomer: ReactivateCustomer;
 }
 
-export function buildAccountsModule(dataSource: DataSource): AccountsModule {
+export function buildAccountsModule(
+  dataSource: DataSource,
+  getOrderSummaryForUsersPort: GetOrderSummaryForUsersPort,
+): AccountsModule {
   const userRepository = new TypeOrmUserRepository(dataSource);
+  const userQueryRepository = new TypeOrmUserQueryRepository(dataSource);
   const emailVerificationTokenRepository = new TypeOrmEmailVerificationTokenRepository(dataSource);
   const passwordResetTokenRepository = new TypeOrmPasswordResetTokenRepository(dataSource);
   const refreshTokenRepository = new TypeOrmRefreshTokenRepository(dataSource);
   const passwordHasher = new BcryptPasswordHasher();
   const emailSender = buildEmailSender();
   const tokenService = new JwtTokenService(requireJwtSecret());
-  const fileStorage = new LocalFileStorage(
-    process.env.UPLOADS_DIR ?? "uploads",
-    process.env.API_PUBLIC_URL ?? "http://localhost:3000",
-  );
+  const fileStorage = buildFileStorage();
 
   const registerUser = new RegisterUser(
     userRepository,
@@ -93,6 +102,9 @@ export function buildAccountsModule(dataSource: DataSource): AccountsModule {
   const updateProfile = new UpdateProfile(userRepository, fileStorage);
   const logoutUser = new LogoutUser(refreshTokenRepository);
   const logoutAllSessions = new LogoutAllSessions(refreshTokenRepository);
+  const listCustomers = new ListCustomers(userQueryRepository, getOrderSummaryForUsersPort);
+  const suspendCustomer = new SuspendCustomer(userRepository, logoutAllSessions);
+  const reactivateCustomer = new ReactivateCustomer(userRepository);
   const getProfile = new GetProfile(userRepository);
   const deleteAccount = new DeleteAccount(
     userRepository,
@@ -147,6 +159,9 @@ export function buildAccountsModule(dataSource: DataSource): AccountsModule {
     loginUser,
     getAddressById,
     getCustomerContact,
+    listCustomers,
+    suspendCustomer,
+    reactivateCustomer,
   };
 }
 

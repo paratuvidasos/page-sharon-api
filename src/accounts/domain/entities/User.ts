@@ -1,5 +1,6 @@
 import { UserRole } from "../enums/UserRole";
 import { UserStatus } from "../enums/UserStatus";
+import { InvalidUserStatusTransitionException } from "../exceptions/InvalidUserStatusTransitionException";
 import { Email } from "../value-objects/Email";
 import { Address } from "./addresses/Address";
 
@@ -159,6 +160,25 @@ export class User {
     this.props.phone = null;
     this.props.avatarUrl = null;
     this.props.status = UserStatus.DELETED;
+  }
+
+  /**
+   * [0063]: bloqueo temporal desde el panel administrativo ante actividad
+   * sospechosa. Distinto de `anonymize` (borrado permanente e irreversible) —
+   * acá los datos del usuario quedan intactos, solo se le impide operar.
+   */
+  suspend(): void {
+    if (this.props.status === UserStatus.DELETED) {
+      throw new InvalidUserStatusTransitionException(this.props.status, UserStatus.SUSPENDED);
+    }
+    this.props.status = UserStatus.SUSPENDED;
+  }
+
+  reactivate(): void {
+    if (this.props.status !== UserStatus.SUSPENDED && this.props.status !== UserStatus.INACTIVE) {
+      throw new InvalidUserStatusTransitionException(this.props.status, UserStatus.ACTIVE);
+    }
+    this.props.status = UserStatus.ACTIVE;
   }
 
   toProps(): UserProps {
