@@ -12,8 +12,10 @@ import { RemoveCartItem } from "../../application/use-cases/RemoveCartItem";
 import { RemoveCouponFromCart } from "../../application/use-cases/RemoveCouponFromCart";
 import { UpdateCartItemQuantity } from "../../application/use-cases/UpdateCartItemQuantity";
 import { CreateCoupon } from "../../application/use-cases/CreateCoupon";
+import { ListCoupons } from "../../application/use-cases/ListCoupons";
 import { QuoteCoupon } from "../../application/use-cases/QuoteCoupon";
 import { RedeemCoupon } from "../../application/use-cases/RedeemCoupon";
+import { UpdateCoupon } from "../../application/use-cases/UpdateCoupon";
 import { CatalogSnapshotPort } from "../../application/ports/CatalogSnapshotPort";
 import { CouponRepository } from "../../domain/repositories/CouponRepository";
 import { TypeOrmCartRepository } from "../persistence/typeorm-cart.repository";
@@ -26,6 +28,8 @@ export interface CartModule {
   couponRepository: CouponRepository;
   mergeGuestCartIntoUserCart: MergeGuestCartIntoUserCart;
   createCoupon: CreateCoupon;
+  updateCoupon: UpdateCoupon;
+  listCoupons: ListCoupons;
   /** [0038]: revalida el cupón contra el subtotal real al confirmar el pedido. */
   quoteCoupon: QuoteCoupon;
   /** [0039]: cuenta el uso del cupón cuando el pago se aprueba. */
@@ -51,6 +55,8 @@ export function buildCartModule(dataSource: DataSource, catalogSnapshotPort: Cat
     couponRepository,
   );
   const createCoupon = new CreateCoupon(couponRepository);
+  const updateCoupon = new UpdateCoupon(couponRepository);
+  const listCoupons = new ListCoupons(couponRepository);
   const quoteCoupon = new QuoteCoupon(couponRepository);
   const redeemCoupon = new RedeemCoupon(couponRepository);
   const clearCartForUser = new ClearCartForUser(cartRepository);
@@ -74,6 +80,8 @@ export function buildCartModule(dataSource: DataSource, catalogSnapshotPort: Cat
     couponRepository,
     mergeGuestCartIntoUserCart,
     createCoupon,
+    updateCoupon,
+    listCoupons,
     quoteCoupon,
     redeemCoupon,
     clearCartForUser,
