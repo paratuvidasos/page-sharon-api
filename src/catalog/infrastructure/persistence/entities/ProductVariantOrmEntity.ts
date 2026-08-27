@@ -40,6 +40,10 @@ export class ProductVariantOrmEntity {
   @Column({ name: "stock_quantity", type: "int", default: 0 })
   stockQuantity!: number;
 
+  // [0059]: null = usar el umbral global (LOW_STOCK_THRESHOLD).
+  @Column({ name: "low_stock_threshold", type: "int", nullable: true })
+  lowStockThreshold!: number | null;
+
   @Column({ name: "image_url", type: "varchar", length: 500, nullable: true })
   imageUrl!: string | null;
 

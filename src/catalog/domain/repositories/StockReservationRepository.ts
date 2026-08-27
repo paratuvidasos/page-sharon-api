@@ -32,6 +32,14 @@ export interface StockReservationRepository {
   release(referenceId: string): Promise<void>;
 
   /**
+   * [0059]/[0060]: devuelve el stock de una referencia cuya reserva ya estaba
+   * `COMMITTED` (pedido pagado) — a diferencia de `release`, que solo actúa
+   * sobre reservas `HELD`. Lo usa `UpdateOrderFulfillmentStatus` ([0060])
+   * cuando un pedido ya pagado se cancela o reembolsa. Es idempotente.
+   */
+  releaseCommitted(referenceId: string): Promise<void>;
+
+  /**
    * Libera las reservas vencidas y devuelve cuántas liberó. Es lo que impide
    * que un carrito abandonado en la pasarela congele stock para siempre.
    */
