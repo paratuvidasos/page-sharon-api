@@ -1,5 +1,6 @@
 import { generateId } from "../../../shared-kernel/infrastructure/ids/generate-id";
 import { Review } from "../../domain/entities/Review";
+import { ReviewStatus } from "../../domain/enums/ReviewStatus";
 import { DuplicateReviewException } from "../../domain/exceptions/DuplicateReviewException";
 import { ReviewRequiresVerifiedPurchaseException } from "../../domain/exceptions/ReviewRequiresVerifiedPurchaseException";
 import { ReviewRepository } from "../../domain/repositories/ReviewRepository";
@@ -15,6 +16,7 @@ export interface CreateReviewResult {
   id: string;
   rating: number;
   comment: string;
+  status: ReviewStatus;
   createdAt: Date;
 }
 
@@ -38,12 +40,18 @@ export interface HasUserPurchasedProductPort {
  * incluyó estado de moderación precisamente porque toda reseña era, por
  * construcción, de compra verificada. Con el interruptor apagado eso deja de
  * ser cierto, y hoy nada distingue una reseña verificada de una que no lo es.
+ *
+ * [0064]: `requireModeration` es otro interruptor independiente, también
+ * apagado por defecto (se preserva el comportamiento actual de publicación
+ * inmediata). Encendido, una reseña nace `PENDING` y necesita que un admin
+ * la apruebe antes de aparecer en el catálogo público.
  */
 export class CreateReview {
   constructor(
     private readonly reviewRepository: ReviewRepository,
     private readonly hasUserPurchasedProduct: HasUserPurchasedProductPort,
     private readonly requireVerifiedPurchase: boolean,
+    private readonly requireModeration: boolean,
   ) {}
 
   async execute(input: CreateReviewInput): Promise<CreateReviewResult> {
@@ -73,10 +81,17 @@ export class CreateReview {
       userId: input.userId,
       rating: input.rating,
       comment: input.comment,
+      initialStatus: this.requireModeration ? ReviewStatus.PENDING : ReviewStatus.APPROVED,
     });
     await this.reviewRepository.save(review);
 
     const props = review.toProps();
-    return { id: props.id, rating: props.rating, comment: props.comment, createdAt: props.createdAt };
+    return {
+      id: props.id,
+      rating: props.rating,
+      comment: props.comment,
+      status: props.status,
+      createdAt: props.createdAt,
+    };
   }
 }

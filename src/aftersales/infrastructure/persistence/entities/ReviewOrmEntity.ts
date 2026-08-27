@@ -1,4 +1,5 @@
 import { Column, CreateDateColumn, Entity, Index, PrimaryColumn } from "typeorm";
+import { ReviewStatus } from "../../../domain/enums/ReviewStatus";
 
 // Sin FK a "users" ni a catalog.products: aftersales es dueño de su propia
 // tabla y no cruza esquemas con otros módulos (ver regla 4 del CLAUDE.md
@@ -21,6 +22,16 @@ export class ReviewOrmEntity {
 
   @Column({ type: "text" })
   comment!: string;
+
+  // [0064]: default APPROVED para no ocultar reseñas ya existentes al
+  // desplegar la migración — el comportamiento actual (auto-publicar) se
+  // preserva salvo que el admin encienda REVIEWS_REQUIRE_MODERATION.
+  @Column({ type: "enum", enum: ReviewStatus, default: ReviewStatus.APPROVED })
+  @Index("ix_reviews_status")
+  status!: ReviewStatus;
+
+  @Column({ name: "rejection_reason", type: "varchar", length: 300, nullable: true })
+  rejectionReason!: string | null;
 
   @CreateDateColumn({ name: "created_at", type: "timestamptz" })
   createdAt!: Date;

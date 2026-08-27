@@ -11,6 +11,8 @@ export class ReviewMapper {
     orm.userId = props.userId;
     orm.rating = props.rating;
     orm.comment = props.comment;
+    orm.status = props.status;
+    orm.rejectionReason = props.rejectionReason;
     orm.createdAt = props.createdAt;
     return orm;
   }
@@ -22,6 +24,8 @@ export class ReviewMapper {
       userId: orm.userId,
       rating: orm.rating,
       comment: orm.comment,
+      status: orm.status,
+      rejectionReason: orm.rejectionReason,
       createdAt: orm.createdAt,
     });
   }
