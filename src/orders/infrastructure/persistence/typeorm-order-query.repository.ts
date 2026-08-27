@@ -1,6 +1,8 @@
 import { DataSource, In, Repository } from "typeorm";
 import { OrderStatus, PURCHASED_ORDER_STATUSES } from "../../domain/enums/OrderStatus";
 import {
+  AdminOrderListFilter,
+  CustomerOrderSummary,
   OrderHistoryFilter,
   OrderHistoryItem,
   OrderHistoryPage,
@@ -100,6 +102,95 @@ export class TypeOrmOrderQueryRepository implements OrderQueryRepository {
       .getOne();
 
     return match !== null;
+  }
+
+  async hasProductBeenOrdered(productId: string): Promise<boolean> {
+    const match = await this.orderItemRepository
+      .createQueryBuilder("item")
+      .innerJoin("orders", "order", "order.id = item.orderId")
+      .where("item.productId = :productId", { productId })
+      .andWhere("order.status IN (:...statuses)", { statuses: PURCHASED_ORDER_STATUSES })
+      .getOne();
+
+    return match !== null;
+  }
+
+  async listForAdmin(
+    filter: AdminOrderListFilter,
+    pagination: OrderHistoryPagination,
+  ): Promise<OrderHistoryPage> {
+    const query = this.orderRepository.createQueryBuilder("order");
+
+    if (filter.userId) {
+      query.andWhere("order.userId = :userId", { userId: filter.userId });
+    }
+    if (filter.status) {
+      query.andWhere("order.status = :status", { status: filter.status });
+    }
+    if (filter.dateFrom) {
+      query.andWhere("order.placedAt >= :dateFrom", { dateFrom: filter.dateFrom });
+    }
+    if (filter.dateTo) {
+      query.andWhere("order.placedAt <= :dateTo", { dateTo: filter.dateTo });
+    }
+    if (filter.paymentMethod) {
+      query.andWhere("order.paymentMethod = :paymentMethod", { paymentMethod: filter.paymentMethod });
+    }
+
+    query
+      .orderBy("order.placedAt", "DESC")
+      .skip((pagination.page - 1) * pagination.limit)
+      .take(pagination.limit);
+
+    const [orders, total] = await query.getManyAndCount();
+
+    if (orders.length === 0) {
+      return { items: [], total };
+    }
+
+    const items = await this.orderItemRepository.find({
+      where: { orderId: In(orders.map((order) => order.id)) },
+    });
+
+    const itemsByOrderId = new Map<string, OrderItemOrmEntity[]>();
+    for (const item of items) {
+      const list = itemsByOrderId.get(item.orderId) ?? [];
+      list.push(item);
+      itemsByOrderId.set(item.orderId, list);
+    }
+
+    return {
+      items: orders.map((order) => toOrderHistoryItem(order, itemsByOrderId.get(order.id) ?? [])),
+      total,
+    };
+  }
+
+  async getSummaryForUsers(userIds: string[]): Promise<Map<string, CustomerOrderSummary>> {
+    if (userIds.length === 0) {
+      return new Map();
+    }
+
+    const rows = await this.orderRepository
+      .createQueryBuilder("order")
+      .select("order.userId", "userId")
+      .addSelect("COUNT(order.id)", "orderCount")
+      .addSelect("COALESCE(SUM(order.total), 0)", "totalSpent")
+      .addSelect("MAX(order.placedAt)", "lastOrderAt")
+      .where("order.userId IN (:...userIds)", { userIds })
+      .andWhere("order.status IN (:...statuses)", { statuses: PURCHASED_ORDER_STATUSES })
+      .groupBy("order.userId")
+      .getRawMany<{ userId: string; orderCount: string; totalSpent: string; lastOrderAt: Date }>();
+
+    return new Map(
+      rows.map((row) => [
+        row.userId,
+        {
+          orderCount: Number(row.orderCount),
+          totalSpent: Number(row.totalSpent),
+          lastOrderAt: row.lastOrderAt,
+        },
+      ]),
+    );
   }
 }
 

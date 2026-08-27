@@ -100,7 +100,13 @@ export class OrdersController {
       authUserId: req.authUser?.sub ?? null,
       guestEmail: query.email ?? null,
     });
-    res.status(200).json(order);
+    // [0060]: `statusHistory[].changedByAdminLabel` es el email del admin que
+    // hizo el cambio — información interna del panel, no algo que el
+    // comprador deba ver en su propio pedido.
+    res.status(200).json({
+      ...order,
+      statusHistory: order.statusHistory.map(({ changedByAdminLabel: _changedByAdminLabel, ...change }) => change),
+    });
   };
 
   retryPayment = async (req: Request, res: Response): Promise<void> => {
