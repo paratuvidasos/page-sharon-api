@@ -33,6 +33,10 @@ export class CouponOrmEntity {
   @Column({ name: "redemptions_count", type: "int", default: 0 })
   redemptionsCount!: number;
 
+  // [0061]: null = aplica a todo el carrito.
+  @Column({ name: "applicable_product_ids", type: "uuid", array: true, nullable: true })
+  applicableProductIds!: string[] | null;
+
   @CreateDateColumn({ name: "created_at", type: "timestamptz" })
   createdAt!: Date;
 }

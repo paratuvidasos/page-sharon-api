@@ -16,6 +16,7 @@ export class CouponMapper {
     orm.isActive = props.isActive;
     orm.maxRedemptions = props.maxRedemptions;
     orm.redemptionsCount = props.redemptionsCount;
+    orm.applicableProductIds = props.applicableProductIds;
     return orm;
   }
 
@@ -31,6 +32,7 @@ export class CouponMapper {
       isActive: orm.isActive,
       maxRedemptions: orm.maxRedemptions,
       redemptionsCount: orm.redemptionsCount,
+      applicableProductIds: orm.applicableProductIds,
       createdAt: orm.createdAt,
     });
   }

@@ -12,4 +12,10 @@ export interface CouponRepository {
    * pisándose.
    */
   incrementRedemptions(code: string): Promise<void>;
+
+  /**
+   * [0061]: listado admin — tabla de bajo volumen, sin split CQ separado
+   * (mismo criterio que `AttributeDefinitionRepository`).
+   */
+  findAll(pagination: { page: number; limit: number }): Promise<{ items: Coupon[]; total: number }>;
 }

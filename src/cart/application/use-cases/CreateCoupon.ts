@@ -11,14 +11,10 @@ export interface CreateCouponInput {
   startsAt?: Date | null;
   endsAt?: Date | null;
   maxRedemptions?: number | null;
+  applicableProductIds?: string[] | null;
 }
 
-/**
- * No hay ninguna US de administración de cupones en el backlog
- * [0023]-[0031] — este caso de uso mínimo existe solo para poder dar de
- * alta cupones de prueba desde el panel administrativo mientras no exista
- * esa US (ver módulo `admin`).
- */
+/** [0061]: alta de un cupón desde el panel administrativo. */
 export class CreateCoupon {
   constructor(private readonly couponRepository: CouponRepository) {}
 
