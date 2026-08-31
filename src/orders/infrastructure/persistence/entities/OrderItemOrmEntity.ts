@@ -19,6 +19,12 @@ export class OrderItemOrmEntity {
   @Column({ name: "product_id", type: "uuid" })
   productId!: string;
 
+  // La variante es lo que realmente tiene stock, así que es lo que hay que
+  // apartar y devolver ([0038]). El producto solo alcanzaba para el contador
+  // de ventas.
+  @Column({ name: "variant_id", type: "uuid" })
+  variantId!: string;
+
   @Column({ name: "product_name", type: "varchar", length: 200 })
   productName!: string;
 

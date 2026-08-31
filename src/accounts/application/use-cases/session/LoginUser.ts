@@ -65,9 +65,13 @@ export class LoginUser {
       throw new AccountLockedException(retryAfterMinutes);
     }
 
+    if (!user.hasPassword()) {
+      throw new InvalidCredentialsException();
+    }
+
     const passwordMatches = await this.passwordHasher.compare(
       input.password,
-      user.toProps().passwordHash,
+      user.toProps().passwordHash as string,
     );
 
     if (!passwordMatches) {

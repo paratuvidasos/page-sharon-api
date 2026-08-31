@@ -6,6 +6,7 @@ import {
   PrimaryColumn,
   UpdateDateColumn,
 } from "typeorm";
+import { Currency } from "../../../../shared-kernel/domain/enums/Currency";
 import { OrderStatus } from "../../../domain/enums/OrderStatus";
 import { PaymentMethod } from "../../../domain/enums/PaymentMethod";
 
@@ -33,14 +34,37 @@ export class OrderOrmEntity {
   @Column({ type: "enum", enum: OrderStatus, default: OrderStatus.PENDING })
   status!: OrderStatus;
 
-  @Column({ type: "varchar", length: 3, default: "COP" })
-  currency!: string;
+  @Column({ type: "enum", enum: Currency, default: Currency.COP })
+  currency!: Currency;
+
+  // [0041]: tasa contra la moneda base, congelada al comprar. Guardarla es lo
+  // que permite reconstruir después cuánto se cobró de verdad, aunque la tasa
+  // del día haya cambiado.
+  @Column({ name: "exchange_rate", type: "decimal", precision: 18, scale: 8, default: 1 })
+  exchangeRate!: string;
 
   @Column({ type: "decimal", precision: 10, scale: 2 })
   subtotal!: string;
 
+  // [0027]: el carrito ya soportaba cupones, pero el pedido no guardaba el
+  // descuento; sin esto el total del pedido no cuadraba con el del carrito.
+  @Column({ name: "coupon_code", type: "varchar", length: 40, nullable: true })
+  couponCode!: string | null;
+
+  @Column({ type: "decimal", precision: 10, scale: 2, default: 0 })
+  discount!: string;
+
   @Column({ name: "shipping_cost", type: "decimal", precision: 10, scale: 2 })
   shippingCost!: string;
+
+  // Snapshot del método de envío, no una FK a shipping_rates: esa tarifa
+  // puede cambiar de precio o desactivarse después (misma razón que el
+  // snapshot de dirección).
+  @Column({ name: "shipping_method_code", type: "varchar", length: 30, default: "STANDARD" })
+  shippingMethodCode!: string;
+
+  @Column({ name: "shipping_method_label", type: "varchar", length: 100, default: "Envío estándar" })
+  shippingMethodLabel!: string;
 
   @Column({ type: "decimal", precision: 10, scale: 2 })
   total!: string;
@@ -50,6 +74,11 @@ export class OrderOrmEntity {
 
   @Column({ name: "payment_method_label", type: "varchar", length: 100, nullable: true })
   paymentMethodLabel!: string | null;
+
+  // [0040]: motivo del último rechazo, ya traducido a lenguaje de usuario.
+  // El código crudo de la pasarela vive en payment_attempts, no aquí.
+  @Column({ name: "payment_failure_message", type: "varchar", length: 300, nullable: true })
+  paymentFailureMessage!: string | null;
 
   // Snapshot de la dirección de envío al momento de comprar: no referencia
   // user_addresses porque esa fila puede editarse o borrarse después.
@@ -77,8 +106,34 @@ export class OrderOrmEntity {
   @Column({ name: "shipping_street_line2", type: "varchar", length: 200, nullable: true })
   shippingStreetLine2!: string | null;
 
+  // [0047]: guía y transportadora. Todo NULL mientras el pedido no salga.
+  // El nombre de la transportadora se guarda además del código porque el
+  // comprador ve el nombre, y ese texto no debería depender de que el catálogo
+  // de transportadoras del futuro siga teniendo ese código.
+  @Column({ name: "carrier_code", type: "varchar", length: 40, nullable: true })
+  carrierCode!: string | null;
+
+  @Column({ name: "carrier_name", type: "varchar", length: 100, nullable: true })
+  carrierName!: string | null;
+
+  @Column({ name: "tracking_number", type: "varchar", length: 60, nullable: true })
+  @Index("ix_orders_tracking_number")
+  trackingNumber!: string | null;
+
+  @Column({ name: "tracking_url", type: "varchar", length: 500, nullable: true })
+  trackingUrl!: string | null;
+
+  @Column({ name: "shipped_at", type: "timestamptz", nullable: true })
+  shippedAt!: Date | null;
+
+  @Column({ name: "delivered_at", type: "timestamptz", nullable: true })
+  deliveredAt!: Date | null;
+
   @Column({ name: "placed_at", type: "timestamptz" })
   placedAt!: Date;
+
+  @Column({ name: "paid_at", type: "timestamptz", nullable: true })
+  paidAt!: Date | null;
 
   @CreateDateColumn({ name: "created_at", type: "timestamptz" })
   createdAt!: Date;

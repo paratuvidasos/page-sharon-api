@@ -59,6 +59,9 @@ export class RegisterUser {
       failedLoginAttempts: 0,
       lockedUntil: null,
       addresses: [],
+      clerkUserId: null,
+      preferredLocale: null,
+      preferredCurrency: null,
     });
 
     await this.userRepository.save(user);

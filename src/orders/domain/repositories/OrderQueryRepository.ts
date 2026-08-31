@@ -3,9 +3,21 @@ import { PaymentMethod } from "../enums/PaymentMethod";
 
 export interface OrderHistoryFilter {
   userId: string;
+  /**
+   * Correo de la cuenta. Se usa para recuperar los pedidos que la persona
+   * hizo como invitado con ese mismo correo antes de tener sesión: son suyos
+   * aunque no lleven su user_id.
+   */
+  userEmail: string;
   status?: OrderStatus;
   dateFrom?: Date;
   dateTo?: Date;
+  /**
+   * [0046]: solo pedidos que ya salieron. Es lo que respalda la pestaña
+   * "envíos" del perfil, que no es lo mismo que el historial de compras: un
+   * pedido pagado que todavía no se despachó no es un envío.
+   */
+  onlyShipped?: boolean;
 }
 
 export interface OrderHistoryPagination {
@@ -33,6 +45,16 @@ export interface OrderHistoryShippingAddress {
   streetLine2: string | null;
 }
 
+/** [0046]: datos del despacho, `null` mientras el pedido no haya salido. */
+export interface OrderHistoryShipment {
+  carrierCode: string;
+  carrierName: string;
+  trackingNumber: string;
+  trackingUrl: string | null;
+  shippedAt: Date;
+  deliveredAt: Date | null;
+}
+
 export interface OrderHistoryItem {
   id: string;
   orderNumber: string;
@@ -45,12 +67,30 @@ export interface OrderHistoryItem {
   paymentMethod: PaymentMethod;
   paymentMethodLabel: string | null;
   shippingAddress: OrderHistoryShippingAddress;
+  /** [0046]: sin el método, el historial no puede decir *cómo* se envió cada pedido. */
+  shippingMethodCode: string;
+  shippingMethodLabel: string;
+  shipment: OrderHistoryShipment | null;
   items: OrderHistoryItemLine[];
 }
 
 export interface OrderHistoryPage {
   items: OrderHistoryItem[];
   total: number;
+}
+
+/**
+ * [0060]: listado admin — sin el condicionamiento por dueño de
+ * `OrderHistoryFilter` (el admin ve pedidos de cualquiera). `userId` es
+ * opcional y sirve para el detalle de pedidos de un cliente desde [0063]
+ * (`GET /admin/orders?userId=...`), reusando este mismo listado.
+ */
+export interface AdminOrderListFilter {
+  status?: OrderStatus;
+  dateFrom?: Date;
+  dateTo?: Date;
+  paymentMethod?: PaymentMethod;
+  userId?: string;
 }
 
 /**
@@ -63,4 +103,47 @@ export interface OrderQueryRepository {
     filter: OrderHistoryFilter,
     pagination: OrderHistoryPagination,
   ): Promise<OrderHistoryPage>;
+
+  /**
+   * [0021]: puerto que `aftersales` consume (vía el caso de uso
+   * `HasUserPurchasedProduct` expuesto por `orders`) para exigir compra
+   * verificada antes de aceptar una reseña — ver regla 2 del CLAUDE.md del
+   * repo. Cuenta cualquier pedido que no esté cancelado/reembolsado (no solo
+   * los "confirmados" tipo PAID/DELIVERED): hoy no existe ningún flujo de
+   * pago/cumplimiento implementado, así que un pedido recién colocado se
+   * queda en PENDING indefinidamente — restringir a estados posteriores
+   * dejaría "compra verificada" inalcanzable en la práctica.
+   */
+  hasUserPurchasedProduct(userId: string, productId: string): Promise<boolean>;
+
+  /**
+   * [0057]: puerto que `catalog` consume (vía `HasProductBeenOrdered`) para
+   * decidir si `DeleteProduct` puede borrar de verdad o tiene que archivar.
+   * Mismo criterio de "pedido real" que `hasUserPurchasedProduct`
+   * (`PURCHASED_ORDER_STATUSES`): un producto que solo tuvo pedidos
+   * cancelados o con el pago fallido no tiene historial que proteger.
+   */
+  hasProductBeenOrdered(productId: string): Promise<boolean>;
+
+  /**
+   * [0060]: listado de pedidos para el panel administrativo, filtrable por
+   * estado, fecha y método de pago (AC de "Ver listado de pedidos y
+   * gestionar su estado").
+   */
+  listForAdmin(filter: AdminOrderListFilter, pagination: OrderHistoryPagination): Promise<OrderHistoryPage>;
+
+  /**
+   * [0063]: resumen de compras por cliente para el listado admin de
+   * `accounts` — batcheado por página de usuarios, escopado a
+   * `PURCHASED_ORDER_STATUSES` (mismo criterio que el resto del módulo: un
+   * pedido cancelado/reembolsado no cuenta como "compra"). Un `userId` sin
+   * pedidos simplemente no aparece en el mapa devuelto.
+   */
+  getSummaryForUsers(userIds: string[]): Promise<Map<string, CustomerOrderSummary>>;
+}
+
+export interface CustomerOrderSummary {
+  orderCount: number;
+  totalSpent: number;
+  lastOrderAt: Date;
 }

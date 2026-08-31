@@ -12,7 +12,12 @@ export function errorHandler(
   _next: NextFunction,
 ): void {
   if (err instanceof DomainException) {
-    res.status(err.statusCode).json({ error: err.code, message: err.message });
+    const details = err.details();
+    res.status(err.statusCode).json({
+      error: err.code,
+      message: err.message,
+      ...(details ?? {}),
+    });
     return;
   }
 

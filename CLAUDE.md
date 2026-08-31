@@ -6,6 +6,12 @@ Guía de contexto para Claude Code al trabajar en este repositorio. Este es el b
 
 Claude Code **nunca** debe ejecutar `git commit` ni `git push` (ni ningún comando que publique o cree commits) en este repositorio, aunque el usuario lo pida explícitamente. El usuario hace sus propios commits y pushes manualmente. Lo único que Claude puede hacer es **redactar el texto/mensaje del commit** cuando se le pida, para que el usuario lo use él mismo.
 
+## Ramas y Pull Requests
+
+* **`laboratory` es la rama de integración — todo lo que se mergea pasa primero por ahí, nunca directo a otra rama.** `main` existe pero no está sincronizada con el trabajo real del equipo (muy por detrás de `laboratory`), así que **no se abren PRs contra `main`** — el target/base de cualquier PR es `laboratory` (o la rama anterior del mismo stack, si es un PR apilado).
+* Las PRs se crean con la extensión **`gh stack`** de GitHub CLI (`gh stack init` / `gh stack submit`), no con `gh pr create` suelto — esto aplica sobre todo cuando el trabajo de una sesión cubre varias US: cada US es un commit propio, y esos commits se apilan como una cadena de PRs (`gh stack init --base laboratory <rama1> <rama2> ...`), cada uno con base en el anterior, para que cada PR se pueda revisar por separado mostrando solo su propio diff.
+* Si la rama de trabajo (ej. una rama personal tipo `feature/<nombre>`) divergió de `laboratory`, no armar el stack directo sobre esos commits — hay que rebasarlos primero contra el tip actual de `origin/laboratory` (en una rama temporal, sin tocar la rama personal ni forzar push sobre ella) para que cada PR del stack muestre únicamente su propio cambio.
+
 ## Arquitectura general
 
 ```
@@ -149,7 +155,7 @@ Las historias de usuario y sus subtasks viven en ClickUp (Space "sharon"), numer
 * Herramienta exacta de generación de Swagger (`zod-to-openapi` asumido; confirmar si el equipo prefiere `swagger-jsdoc` u otra).
 * Estrategia de paginación (cursor vs offset) para el contrato común de `shared-kernel`.
 * Pasarela(s) de pago a integrar.
-* Transportadora(s) de envío a integrar.
+* Transportadora(s) de envío a integrar. El punto de integración ya existe desde [0048] (`shipping/domain/ports/CarrierRateProviderPort` + `HttpCarrierRateProvider`, que mapea un contrato JSON genérico); lo pendiente es elegir el proveedor y ajustar ese adaptador a su contrato real. Sin credenciales, todo se cotiza con la tarifa de respaldo de `shipping_rates`.
 * Alcance final de multi-moneda/multi-idioma (marcado como "a futuro" en el backlog del frontend).
 
 ## Comandos (ajustar según package.json real — proyecto aún sin scaffolding)

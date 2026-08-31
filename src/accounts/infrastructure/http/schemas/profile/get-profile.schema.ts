@@ -1,4 +1,6 @@
 import { z } from "zod";
+import { Currency } from "../../../../../shared-kernel/domain/enums/Currency";
+import { Locale } from "../../../../../shared-kernel/domain/enums/Locale";
 import { registry } from "../../../../../shared-kernel/infrastructure/swagger/registry";
 import { UserRole } from "../../../../domain/enums/UserRole";
 
@@ -10,6 +12,15 @@ export const GetProfileResponseSchema = z.object({
   phone: z.string().nullable().openapi({ example: "+573001234567" }),
   avatarUrl: z.string().nullable(),
   role: z.nativeEnum(UserRole),
+  hasPassword: z.boolean().openapi({
+    description: "false si la cuenta llegó solo por Google y todavía no tiene contraseña propia.",
+  }),
+  preferredLocale: z.nativeEnum(Locale).nullable().openapi({
+    description: "null si el usuario nunca eligió idioma manualmente.",
+  }),
+  preferredCurrency: z.nativeEnum(Currency).nullable().openapi({
+    description: "null si el usuario nunca eligió moneda manualmente.",
+  }),
 });
 
 registry.registerPath({

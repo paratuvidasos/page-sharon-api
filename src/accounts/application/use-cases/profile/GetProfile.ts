@@ -1,3 +1,5 @@
+import { Currency } from "../../../../shared-kernel/domain/enums/Currency";
+import { Locale } from "../../../../shared-kernel/domain/enums/Locale";
 import { UserNotFoundException } from "../../../domain/exceptions/UserNotFoundException";
 import { UserRepository } from "../../../domain/repositories/UserRepository";
 import { UserRole } from "../../../domain/enums/UserRole";
@@ -14,6 +16,9 @@ export interface GetProfileResult {
   phone: string | null;
   avatarUrl: string | null;
   role: UserRole;
+  hasPassword: boolean;
+  preferredLocale: Locale | null;
+  preferredCurrency: Currency | null;
 }
 
 export class GetProfile {
@@ -35,6 +40,9 @@ export class GetProfile {
       phone: props.phone,
       avatarUrl: props.avatarUrl,
       role: props.role,
+      hasPassword: user.hasPassword(),
+      preferredLocale: props.preferredLocale,
+      preferredCurrency: props.preferredCurrency,
     };
   }
 }

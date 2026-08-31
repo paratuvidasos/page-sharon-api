@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { DeleteAccount } from "../../application/use-cases/profile/DeleteAccount";
 import { LoginUser } from "../../application/use-cases/session/LoginUser";
+import { LoginWithGoogle } from "../../application/use-cases/session/LoginWithGoogle";
 import { LogoutAllSessions } from "../../application/use-cases/session/LogoutAllSessions";
 import { LogoutUser } from "../../application/use-cases/session/LogoutUser";
 import { RefreshAccessToken } from "../../application/use-cases/session/RefreshAccessToken";
@@ -9,11 +10,13 @@ import { RequestPasswordReset } from "../../application/use-cases/password-reset
 import { ResendVerificationEmail } from "../../application/use-cases/registration/ResendVerificationEmail";
 import { ResetPassword } from "../../application/use-cases/password-reset/ResetPassword";
 import { GetProfile } from "../../application/use-cases/profile/GetProfile";
+import { SetPassword } from "../../application/use-cases/profile/SetPassword";
 import { UpdateProfile } from "../../application/use-cases/profile/UpdateProfile";
 import { VerifyEmail } from "../../application/use-cases/registration/VerifyEmail";
 import { InvalidRefreshTokenException } from "../../domain/exceptions/session/InvalidRefreshTokenException";
 import { UnauthorizedException } from "../../../shared-kernel/domain/exceptions/UnauthorizedException";
 import { LoginRequestSchema } from "./schemas/session/login.schema";
+import { GoogleLoginRequestSchema } from "./schemas/session/google-login.schema";
 import "./schemas/session/refresh-token.schema";
 import "./schemas/session/logout.schema";
 import "./schemas/session/logout-all.schema";
@@ -23,6 +26,7 @@ import { RegisterRequestSchema } from "./schemas/registration/register.schema";
 import { RequestPasswordResetRequestSchema } from "./schemas/password-reset/request-password-reset.schema";
 import { ResendVerificationEmailRequestSchema } from "./schemas/registration/resend-verification-email.schema";
 import { ResetPasswordRequestSchema } from "./schemas/password-reset/reset-password.schema";
+import { SetPasswordRequestSchema } from "./schemas/profile/set-password.schema";
 import { UpdateProfileRequestSchema } from "./schemas/profile/update-profile.schema";
 import { VerifyEmailQuerySchema } from "./schemas/registration/verify-email.schema";
 
@@ -43,6 +47,7 @@ export class AccountsController {
     private readonly verifyEmail: VerifyEmail,
     private readonly resendVerificationEmail: ResendVerificationEmail,
     private readonly loginUser: LoginUser,
+    private readonly loginWithGoogleUseCase: LoginWithGoogle,
     private readonly refreshAccessToken: RefreshAccessToken,
     private readonly requestPasswordResetUseCase: RequestPasswordReset,
     private readonly resetPasswordUseCase: ResetPassword,
@@ -51,6 +56,7 @@ export class AccountsController {
     private readonly logoutAllSessionsUseCase: LogoutAllSessions,
     private readonly getProfileUseCase: GetProfile,
     private readonly deleteAccountUseCase: DeleteAccount,
+    private readonly setPasswordUseCase: SetPassword,
   ) {}
 
   private setRefreshTokenCookie(res: Response, token: string, expiresAt: Date): void {
@@ -95,6 +101,24 @@ export class AccountsController {
     const result = await this.loginUser.execute({
       email: input.email,
       password: input.password,
+      rememberMe: input.rememberMe,
+      userAgent: req.headers["user-agent"] ?? null,
+      ipAddress: req.ip ?? null,
+    });
+
+    this.setRefreshTokenCookie(res, result.refreshToken, result.refreshTokenExpiresAt);
+
+    res.status(200).json({
+      accessToken: result.accessToken,
+      expiresIn: result.accessTokenExpiresIn,
+      user: result.user,
+    });
+  };
+
+  loginWithGoogle = async (req: Request, res: Response): Promise<void> => {
+    const input = GoogleLoginRequestSchema.parse(req.body);
+    const result = await this.loginWithGoogleUseCase.execute({
+      sessionToken: input.sessionToken,
       rememberMe: input.rememberMe,
       userAgent: req.headers["user-agent"] ?? null,
       ipAddress: req.ip ?? null,
@@ -203,5 +227,15 @@ export class AccountsController {
 
     this.clearRefreshTokenCookie(res);
     res.status(200).json({ message: "Tu cuenta y tus datos personales fueron eliminados correctamente." });
+  };
+
+  setPassword = async (req: Request, res: Response): Promise<void> => {
+    if (!req.authUser) {
+      throw new UnauthorizedException();
+    }
+
+    const input = SetPasswordRequestSchema.parse(req.body);
+    await this.setPasswordUseCase.execute({ userId: req.authUser.sub, newPassword: input.newPassword });
+    res.status(200).json({ message: "Tu contraseña se creó correctamente." });
   };
 }

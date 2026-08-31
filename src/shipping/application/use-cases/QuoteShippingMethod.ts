@@ -1,0 +1,47 @@
+import { Currency } from "../../../shared-kernel/domain/enums/Currency";
+import { ShippingMethod } from "../../domain/enums/ShippingMethod";
+import { ShipmentItem } from "../parcel";
+import { ShippingMethodNotAvailableException } from "../../domain/exceptions/ShippingMethodNotAvailableException";
+import { GetShippingOptions, ShippingOption } from "./GetShippingOptions";
+
+export interface QuoteShippingMethodInput {
+  countryCode: string;
+  stateProvince: string;
+  postalCode: string | null;
+  subtotal: number;
+  currency: Currency;
+  method: ShippingMethod;
+  /** [0048]: qué se está enviando; el bulto se resuelve contra el catálogo. */
+  items: ShipmentItem[];
+}
+
+/**
+ * [0034] + [0038]: recotiza en el servidor el método de envío que el cliente
+ * dice haber elegido, y devuelve su costo real.
+ *
+ * Existe separado de `GetShippingOptions` porque el checkout no necesita la
+ * lista completa: necesita el costo de UNA opción, y necesita que el costo
+ * salga de la tabla de tarifas y no del body de la petición. Es lo que impide
+ * que alguien confirme un pedido con `shippingCost: 0`.
+ */
+export class QuoteShippingMethod {
+  constructor(private readonly getShippingOptions: GetShippingOptions) {}
+
+  async execute(input: QuoteShippingMethodInput): Promise<ShippingOption> {
+    const { options } = await this.getShippingOptions.execute({
+      countryCode: input.countryCode,
+      stateProvince: input.stateProvince,
+      postalCode: input.postalCode ?? null,
+      subtotal: input.subtotal,
+      currency: input.currency,
+      items: input.items,
+    });
+
+    const option = options.find((current) => current.method === input.method);
+    if (!option) {
+      throw new ShippingMethodNotAvailableException();
+    }
+
+    return option;
+  }
+}

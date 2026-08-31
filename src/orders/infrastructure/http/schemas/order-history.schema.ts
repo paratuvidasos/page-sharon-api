@@ -6,11 +6,21 @@ import {
 import { registry } from "../../../../shared-kernel/infrastructure/swagger/registry";
 import { OrderStatus } from "../../../domain/enums/OrderStatus";
 import { PaymentMethod } from "../../../domain/enums/PaymentMethod";
+import { OrderShipmentResponseSchema } from "./checkout.schema";
 
 export const OrderHistoryQuerySchema = PaginationQuerySchema.extend({
   dateFrom: z.coerce.date().optional(),
   dateTo: z.coerce.date().optional(),
   status: z.nativeEnum(OrderStatus).optional(),
+  onlyShipped: z
+    .enum(["true", "false"])
+    .transform((value) => value === "true")
+    .optional()
+    .openapi({
+      example: "true",
+      description:
+        "[0046]: deja solo los pedidos ya despachados (SHIPPED o DELIVERED), para la pestaña de envíos del perfil.",
+    }),
 }).refine((query) => !query.dateFrom || !query.dateTo || query.dateFrom <= query.dateTo, {
   message: "dateFrom debe ser anterior o igual a dateTo.",
   path: ["dateFrom"],
@@ -48,6 +58,11 @@ export const OrderHistoryItemResponseSchema = z.object({
   paymentMethod: z.nativeEnum(PaymentMethod),
   paymentMethodLabel: z.string().nullable().openapi({ example: "Visa •••• 4242" }),
   shippingAddress: OrderHistoryShippingAddressSchema,
+  shippingMethodCode: z.string().openapi({ example: "STANDARD" }),
+  shippingMethodLabel: z.string().openapi({ example: "Envío estándar" }),
+  shipment: OrderShipmentResponseSchema.nullable().openapi({
+    description: "[0046]: guía y transportadora. null mientras el pedido no haya salido.",
+  }),
   items: z.array(OrderHistoryLineItemSchema),
 });
 
@@ -57,7 +72,10 @@ registry.registerPath({
   method: "get",
   path: "/orders",
   tags: ["orders"],
-  summary: "Historial de pedidos del usuario autenticado, con filtros por rango de fechas y estado",
+  summary:
+    "Historial de pedidos del usuario autenticado, con filtros por rango de fechas, estado y solo-envíos",
+  description:
+    "[0046]: cada pedido trae su método de envío y, si ya salió, su transportadora y número de guía. Con `onlyShipped=true` responde el historial de envíos del perfil.",
   request: {
     query: OrderHistoryQuerySchema,
   },

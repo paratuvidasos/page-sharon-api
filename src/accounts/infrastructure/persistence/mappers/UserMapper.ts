@@ -19,6 +19,9 @@ export class UserMapper {
       emailVerifiedAt: orm.emailVerifiedAt,
       failedLoginAttempts: orm.failedLoginAttempts,
       lockedUntil: orm.lockedUntil,
+      clerkUserId: orm.clerkUserId,
+      preferredLocale: orm.preferredLocale,
+      preferredCurrency: orm.preferredCurrency,
       addresses: (orm.addresses ?? []).map((address) =>
         Address.create({
           id: address.id,
@@ -54,6 +57,9 @@ export class UserMapper {
     orm.emailVerifiedAt = props.emailVerifiedAt;
     orm.failedLoginAttempts = props.failedLoginAttempts;
     orm.lockedUntil = props.lockedUntil;
+    orm.clerkUserId = props.clerkUserId;
+    orm.preferredLocale = props.preferredLocale;
+    orm.preferredCurrency = props.preferredCurrency;
     orm.addresses = props.addresses.map((address) => {
       const addressProps = address.toProps();
       const addressOrm = new UserAddressOrmEntity();
