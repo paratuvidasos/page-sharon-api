@@ -1,13 +1,17 @@
+import { Currency } from "../../../shared-kernel/domain/enums/Currency";
+import { Locale } from "../../../shared-kernel/domain/enums/Locale";
 import { UserRole } from "../enums/UserRole";
 import { UserStatus } from "../enums/UserStatus";
 import { InvalidUserStatusTransitionException } from "../exceptions/InvalidUserStatusTransitionException";
+import { PasswordAlreadySetException } from "../exceptions/profile/PasswordAlreadySetException";
 import { Email } from "../value-objects/Email";
 import { Address } from "./addresses/Address";
 
 export interface UserProps {
   id: string;
   email: Email;
-  passwordHash: string;
+  /** Null cuando la cuenta se creó por un proveedor externo (Google/Clerk) y nunca se le definió contraseña propia. */
+  passwordHash: string | null;
   firstName: string;
   lastName: string;
   phone: string | null;
@@ -18,6 +22,11 @@ export interface UserProps {
   failedLoginAttempts: number;
   lockedUntil: Date | null;
   addresses: Address[];
+  /** Id del usuario en Clerk cuando la cuenta se vinculó a un login social (Google). */
+  clerkUserId: string | null;
+  /** [0070]: null cuando el usuario nunca eligió manualmente — la sugerencia por geo-IP no cuenta como elección. */
+  preferredLocale: Locale | null;
+  preferredCurrency: Currency | null;
 }
 
 export class User {
@@ -109,6 +118,38 @@ export class User {
     this.resetFailedLoginAttempts();
   }
 
+  hasPassword(): boolean {
+    return this.props.passwordHash !== null;
+  }
+
+  get clerkUserId(): string | null {
+    return this.props.clerkUserId;
+  }
+
+  /**
+   * Primera contraseña de una cuenta que hasta ahora solo tenía login social
+   * (Google vía Clerk). No sirve para cambiar una contraseña existente —
+   * eso pasa por el flujo normal de reset/cambio de contraseña.
+   */
+  setInitialPassword(passwordHash: string): void {
+    if (this.hasPassword()) {
+      throw new PasswordAlreadySetException();
+    }
+    this.props.passwordHash = passwordHash;
+  }
+
+  /**
+   * Vincula esta cuenta a una identidad de Clerk (login con Google). El email
+   * ya viene verificado por Google, así que también cierra la verificación
+   * propia si todavía estaba pendiente.
+   */
+  linkClerkIdentity(clerkUserId: string, now: Date = new Date()): void {
+    this.props.clerkUserId = clerkUserId;
+    if (!this.isEmailVerified()) {
+      this.markEmailAsVerified(now);
+    }
+  }
+
   get failedLoginAttempts(): number {
     return this.props.failedLoginAttempts;
   }
@@ -145,6 +186,28 @@ export class User {
     this.props.avatarUrl = input.avatarUrl;
   }
 
+  get preferredLocale(): Locale | null {
+    return this.props.preferredLocale;
+  }
+
+  get preferredCurrency(): Currency | null {
+    return this.props.preferredCurrency;
+  }
+
+  /**
+   * [0070]: guarda una elección manual de idioma/moneda. Solo se llama desde
+   * `PUT /localization/preferences` — nunca desde la sugerencia por geo-IP,
+   * que no debe pisar lo que el usuario ya eligió.
+   */
+  updatePreferences(input: { locale?: Locale; currency?: Currency }): void {
+    if (input.locale !== undefined) {
+      this.props.preferredLocale = input.locale;
+    }
+    if (input.currency !== undefined) {
+      this.props.preferredCurrency = input.currency;
+    }
+  }
+
   /**
    * Elimina/anonimiza los datos personales identificables del usuario
    * (email, nombre, teléfono, foto, contraseña) para cumplir con el
@@ -159,6 +222,7 @@ export class User {
     this.props.lastName = "eliminado";
     this.props.phone = null;
     this.props.avatarUrl = null;
+    this.props.clerkUserId = null;
     this.props.status = UserStatus.DELETED;
   }
 

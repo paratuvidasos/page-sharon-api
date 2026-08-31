@@ -1,3 +1,4 @@
+import { Locale } from "../../../shared-kernel/domain/enums/Locale";
 import { CartItemNotFoundException } from "../../domain/exceptions/CartItemNotFoundException";
 import { CartRepository } from "../../domain/repositories/CartRepository";
 import { CouponRepository } from "../../domain/repositories/CouponRepository";
@@ -8,6 +9,7 @@ import { CatalogSnapshotPort } from "../ports/CatalogSnapshotPort";
 export interface RemoveCartItemInput {
   owner: CartOwner;
   itemId: string;
+  locale?: Locale;
 }
 
 export class RemoveCartItem {
@@ -26,7 +28,7 @@ export class RemoveCartItem {
     cart.removeItem(input.itemId);
     await this.cartRepository.save(cart);
 
-    const { response } = await buildCartResponse(cart, this.catalogSnapshotPort, this.couponRepository);
+    const { response } = await buildCartResponse(cart, this.catalogSnapshotPort, this.couponRepository, input.locale);
     return response;
   }
 }

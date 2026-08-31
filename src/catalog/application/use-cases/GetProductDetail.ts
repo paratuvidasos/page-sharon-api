@@ -1,3 +1,4 @@
+import { Locale } from "../../../shared-kernel/domain/enums/Locale";
 import { StockStatus } from "../../domain/enums/StockStatus";
 import { ProductNotFoundException } from "../../domain/exceptions/ProductNotFoundException";
 import { ProductRepository } from "../../domain/repositories/ProductRepository";
@@ -5,6 +6,7 @@ import { ProductRatingSummary, RatingSummaryPort } from "../ports/RatingSummaryP
 
 export interface GetProductDetailInput {
   slug: string;
+  locale: Locale;
 }
 
 export interface ProductDetailVariant {
@@ -61,8 +63,8 @@ export class GetProductDetail {
     return {
       id: props.id,
       slug: props.slug,
-      name: props.name,
-      description: props.description,
+      name: product.localizedName(input.locale),
+      description: product.localizedDescription(input.locale),
       brand: props.brand,
       ingredients: props.ingredients,
       attributes: props.attributes,

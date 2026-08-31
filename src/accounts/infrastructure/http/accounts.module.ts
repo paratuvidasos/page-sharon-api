@@ -12,6 +12,7 @@ import { GetAddressById } from "../../application/use-cases/addresses/GetAddress
 import { DeleteAccount } from "../../application/use-cases/profile/DeleteAccount";
 import { ListAddresses } from "../../application/use-cases/addresses/ListAddresses";
 import { LoginUser } from "../../application/use-cases/session/LoginUser";
+import { LoginWithGoogle } from "../../application/use-cases/session/LoginWithGoogle";
 import { LogoutAllSessions } from "../../application/use-cases/session/LogoutAllSessions";
 import { LogoutUser } from "../../application/use-cases/session/LogoutUser";
 import { RefreshAccessToken } from "../../application/use-cases/session/RefreshAccessToken";
@@ -28,9 +29,13 @@ import { ReactivateCustomer } from "../../application/use-cases/admin/Reactivate
 import { SuspendCustomer } from "../../application/use-cases/admin/SuspendCustomer";
 import { GetCustomerContact } from "../../application/use-cases/profile/GetCustomerContact";
 import { GetProfile } from "../../application/use-cases/profile/GetProfile";
+import { GetUserLocalePreference } from "../../application/use-cases/profile/GetUserLocalePreference";
+import { UpdateLocalePreference } from "../../application/use-cases/profile/UpdateLocalePreference";
+import { SetPassword } from "../../application/use-cases/profile/SetPassword";
 import { UpdateProfile } from "../../application/use-cases/profile/UpdateProfile";
 import { VerifyEmail } from "../../application/use-cases/registration/VerifyEmail";
 import { BcryptPasswordHasher } from "../security/BcryptPasswordHasher";
+import { ClerkBackendIdentityVerifier } from "../security/ClerkBackendIdentityVerifier";
 import { TypeOrmEmailVerificationTokenRepository } from "../persistence/registration/typeorm-email-verification-token.repository";
 import { TypeOrmPasswordResetTokenRepository } from "../persistence/password-reset/typeorm-password-reset-token.repository";
 import { TypeOrmRefreshTokenRepository } from "../persistence/session/typeorm-refresh-token.repository";
@@ -48,6 +53,9 @@ export interface AccountsModule {
   getAddressById: GetAddressById;
   /** Correo y nombre del comprador con sesión, para la pasarela y el correo de confirmación. */
   getCustomerContact: GetCustomerContact;
+  /** [0070]: puertos que `localization` consume para leer/guardar la preferencia de idioma/moneda de la cuenta. */
+  getUserLocalePreference: GetUserLocalePreference;
+  updateLocalePreference: UpdateLocalePreference;
   /** [0063]: listado de clientes y bloqueo/reactivación para el panel administrativo. */
   listCustomers: ListCustomers;
   suspendCustomer: SuspendCustomer;
@@ -67,6 +75,7 @@ export function buildAccountsModule(
   const emailSender = buildEmailSender();
   const tokenService = new JwtTokenService(requireJwtSecret());
   const fileStorage = buildFileStorage();
+  const clerkIdentityVerifier = new ClerkBackendIdentityVerifier(requireClerkSecretKey());
 
   const registerUser = new RegisterUser(
     userRepository,
@@ -81,6 +90,12 @@ export function buildAccountsModule(
     emailSender,
   );
   const loginUser = new LoginUser(userRepository, refreshTokenRepository, passwordHasher, tokenService);
+  const loginWithGoogle = new LoginWithGoogle(
+    userRepository,
+    refreshTokenRepository,
+    clerkIdentityVerifier,
+    tokenService,
+  );
   const registerUserForCheckout = new RegisterUserForCheckout(
     userRepository,
     emailVerificationTokenRepository,
@@ -106,6 +121,7 @@ export function buildAccountsModule(
   const suspendCustomer = new SuspendCustomer(userRepository, logoutAllSessions);
   const reactivateCustomer = new ReactivateCustomer(userRepository);
   const getProfile = new GetProfile(userRepository);
+  const setPassword = new SetPassword(userRepository, passwordHasher);
   const deleteAccount = new DeleteAccount(
     userRepository,
     refreshTokenRepository,
@@ -121,6 +137,7 @@ export function buildAccountsModule(
     verifyEmail,
     resendVerificationEmail,
     loginUser,
+    loginWithGoogle,
     refreshAccessToken,
     requestPasswordReset,
     resetPassword,
@@ -129,6 +146,7 @@ export function buildAccountsModule(
     logoutAllSessions,
     getProfile,
     deleteAccount,
+    setPassword,
   );
 
   const addAddress = new AddAddress(userRepository);
@@ -140,6 +158,8 @@ export function buildAccountsModule(
   const restoreAddress = new RestoreAddress(userRepository);
   const getAddressById = new GetAddressById(userRepository);
   const getCustomerContact = new GetCustomerContact(userRepository);
+  const getUserLocalePreference = new GetUserLocalePreference(userRepository);
+  const updateLocalePreference = new UpdateLocalePreference(userRepository);
 
   const addressesController = new AddressesController(
     addAddress,
@@ -159,6 +179,8 @@ export function buildAccountsModule(
     loginUser,
     getAddressById,
     getCustomerContact,
+    getUserLocalePreference,
+    updateLocalePreference,
     listCustomers,
     suspendCustomer,
     reactivateCustomer,
@@ -171,4 +193,12 @@ function requireJwtSecret(): string {
     throw new Error("JWT_SECRET no está configurado.");
   }
   return secret;
+}
+
+function requireClerkSecretKey(): string {
+  const secretKey = process.env.CLERK_SECRET_KEY;
+  if (!secretKey) {
+    throw new Error("CLERK_SECRET_KEY no está configurado.");
+  }
+  return secretKey;
 }

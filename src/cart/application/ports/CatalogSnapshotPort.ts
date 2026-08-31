@@ -1,3 +1,5 @@
+import { Locale } from "../../../shared-kernel/domain/enums/Locale";
+
 export interface CartProductSnapshot {
   productId: string;
   variantId: string;
@@ -18,5 +20,5 @@ export interface CartProductSnapshot {
  * typing que ya usa `RatingSummaryPort` entre `catalog` y `aftersales`.
  */
 export interface CatalogSnapshotPort {
-  execute(input: { variantIds: string[] }): Promise<CartProductSnapshot[]>;
+  execute(input: { variantIds: string[]; locale?: Locale }): Promise<CartProductSnapshot[]>;
 }

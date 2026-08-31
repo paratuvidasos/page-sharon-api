@@ -38,6 +38,7 @@ export class CatalogController {
       priceMin: query.priceMin,
       priceMax: query.priceMax,
       sort: query.sort,
+      locale: req.locale,
     });
     res.status(200).json(result);
   };
@@ -50,7 +51,7 @@ export class CatalogController {
 
   getProductDetailHandler = async (req: Request, res: Response): Promise<void> => {
     const { slug } = ProductSlugParamsSchema.parse(req.params);
-    const result = await this.getProductDetail.execute({ slug });
+    const result = await this.getProductDetail.execute({ slug, locale: req.locale });
     res.status(200).json(result);
   };
 
@@ -62,24 +63,29 @@ export class CatalogController {
 
   searchProductsHandler = async (req: Request, res: Response): Promise<void> => {
     const query = SearchProductsQuerySchema.parse(req.query);
-    const result = await this.searchProducts.execute({ term: query.q, page: query.page, limit: query.limit });
+    const result = await this.searchProducts.execute({
+      term: query.q,
+      page: query.page,
+      limit: query.limit,
+      locale: req.locale,
+    });
     res.status(200).json(result);
   };
 
   autocompleteProductsHandler = async (req: Request, res: Response): Promise<void> => {
     const query = AutocompleteQuerySchema.parse(req.query);
-    const suggestions = await this.autocompleteProducts.execute({ term: query.q });
+    const suggestions = await this.autocompleteProducts.execute({ term: query.q, locale: req.locale });
     res.status(200).json({ suggestions });
   };
 
   listRelatedProductsHandler = async (req: Request, res: Response): Promise<void> => {
     const { slug } = ProductSlugParamsSchema.parse(req.params);
-    const items = await this.listRelatedProducts.execute({ slug });
+    const items = await this.listRelatedProducts.execute({ slug, locale: req.locale });
     res.status(200).json({ items });
   };
 
-  listFeaturedProductsHandler = async (_req: Request, res: Response): Promise<void> => {
-    const items = await this.listFeaturedProducts.execute({});
+  listFeaturedProductsHandler = async (req: Request, res: Response): Promise<void> => {
+    const items = await this.listFeaturedProducts.execute({ locale: req.locale });
     res.status(200).json({ items });
   };
 }

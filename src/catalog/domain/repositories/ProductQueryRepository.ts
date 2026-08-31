@@ -1,3 +1,4 @@
+import { Locale } from "../../../shared-kernel/domain/enums/Locale";
 import { InventorySort } from "../enums/InventorySort";
 import { ProductSort } from "../enums/ProductSort";
 import { ProductStatus } from "../enums/ProductStatus";
@@ -114,7 +115,7 @@ export interface LowStockVariantPage {
  * forma general.
  */
 export interface ProductQueryRepository {
-  listForCatalogPage(filter: ProductListFilter, pagination: ProductListPagination): Promise<ProductListPage>;
+  listForCatalogPage(filter: ProductListFilter, pagination: ProductListPagination, locale: Locale): Promise<ProductListPage>;
 
   /**
    * Facetas para [0017]: cuenta resultados por cada valor de atributo
@@ -131,16 +132,16 @@ export interface ProductQueryRepository {
    * generada `search_vector`) más coincidencia por nombre de categoría, solo
    * sobre productos activos.
    */
-  searchByKeyword(term: string, pagination: ProductListPagination): Promise<ProductListPage>;
+  searchByKeyword(term: string, pagination: ProductListPagination, locale: Locale): Promise<ProductListPage>;
 
   /** [0018]: autocompletado por prefijo de nombre, acotado a `limit`. */
-  suggestByPrefix(prefix: string, limit: number): Promise<ProductSuggestion[]>;
+  suggestByPrefix(prefix: string, limit: number, locale: Locale): Promise<ProductSuggestion[]>;
 
   /**
    * [0020]: misma categoría, excluye el propio producto y los que no
    * tengan ninguna variante con stock, ordenado por más vendidos.
    */
-  findRelatedProducts(filter: RelatedProductsFilter): Promise<ProductListItem[]>;
+  findRelatedProducts(filter: RelatedProductsFilter, locale: Locale): Promise<ProductListItem[]>;
 
   /**
    * [0022]: destacados (marcados desde admin) unidos con los que están en
@@ -148,7 +149,7 @@ export interface ProductQueryRepository {
    * sección se actualiza sola cuando cambian las ofertas activas, sin caché
    * a invalidar.
    */
-  listFeaturedAndOnSale(limit: number): Promise<ProductListItem[]>;
+  listFeaturedAndOnSale(limit: number, locale: Locale): Promise<ProductListItem[]>;
 
   /**
    * Puerto consumido por `cart` a través de `GetCartProductSnapshots` (ver
@@ -157,7 +158,7 @@ export interface ProductQueryRepository {
    * y estado activo por variante, para validar el carrito contra el
    * catálogo vigente.
    */
-  findVariantSnapshots(variantIds: string[]): Promise<ProductVariantSnapshot[]>;
+  findVariantSnapshots(variantIds: string[], locale: Locale): Promise<ProductVariantSnapshot[]>;
 
   /**
    * [0066]: productos activos por id, en el orden pedido — respalda el modo
@@ -165,13 +166,13 @@ export interface ProductQueryRepository {
    * Un id que no exista o no esté ACTIVE simplemente no aparece en el
    * resultado.
    */
-  findByIds(productIds: string[]): Promise<ProductListItem[]>;
+  findByIds(productIds: string[], locale: Locale): Promise<ProductListItem[]>;
 
   /** [0066]: regla automática "más vendidos" de destacados de home. Excluye sin stock, igual que `findRelatedProducts`. */
-  listTopSelling(limit: number): Promise<ProductListItem[]>;
+  listTopSelling(limit: number, locale: Locale): Promise<ProductListItem[]>;
 
   /** [0066]: regla automática "novedades" de destacados de home. Excluye sin stock, igual que `findRelatedProducts`. */
-  listNewest(limit: number): Promise<ProductListItem[]>;
+  listNewest(limit: number, locale: Locale): Promise<ProductListItem[]>;
 
   /**
    * [0059]: variantes en `stock_quantity <= COALESCE(low_stock_threshold, 5)`
@@ -193,6 +194,20 @@ export interface ProductQueryRepository {
     filter: InventoryListFilter,
     pagination: ProductListPagination,
   ): Promise<LowStockVariantPage>;
+
+  /**
+   * [0069]: cuántos productos activos tienen traducción por idioma, contra
+   * el total de productos activos — respalda el reporte de cobertura del
+   * panel administrativo. Devuelve una fila por idioma en `locales` aunque
+   * esté en cero.
+   */
+  countTranslatedByLocale(locales: Locale[]): Promise<TranslationCoverageItem[]>;
+}
+
+export interface TranslationCoverageItem {
+  locale: Locale;
+  translated: number;
+  total: number;
 }
 
 export interface InventoryListFilter {

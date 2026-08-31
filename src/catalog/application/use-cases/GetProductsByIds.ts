@@ -1,3 +1,4 @@
+import { Locale } from "../../../shared-kernel/domain/enums/Locale";
 import { ProductListItem, ProductQueryRepository } from "../../domain/repositories/ProductQueryRepository";
 
 /**
@@ -7,7 +8,7 @@ import { ProductListItem, ProductQueryRepository } from "../../domain/repositori
 export class GetProductsByIds {
   constructor(private readonly productQueryRepository: ProductQueryRepository) {}
 
-  async execute(input: { productIds: string[] }): Promise<ProductListItem[]> {
-    return this.productQueryRepository.findByIds(input.productIds);
+  async execute(input: { productIds: string[]; locale: Locale }): Promise<ProductListItem[]> {
+    return this.productQueryRepository.findByIds(input.productIds, input.locale);
   }
 }

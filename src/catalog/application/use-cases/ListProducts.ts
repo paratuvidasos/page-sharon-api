@@ -1,3 +1,4 @@
+import { Locale } from "../../../shared-kernel/domain/enums/Locale";
 import { PaginationMeta, buildPaginationMeta } from "../../../shared-kernel/infrastructure/http/pagination";
 import { ProductSort } from "../../domain/enums/ProductSort";
 import { ProductStatus } from "../../domain/enums/ProductStatus";
@@ -15,6 +16,7 @@ export interface ListProductsInput {
   priceMin?: number;
   priceMax?: number;
   sort?: ProductSort;
+  locale: Locale;
 }
 
 export interface ListProductsResultItem {
@@ -62,6 +64,7 @@ export class ListProducts {
         sort: input.sort,
       },
       { page: input.page, limit: input.limit },
+      input.locale,
     );
 
     const ratings =

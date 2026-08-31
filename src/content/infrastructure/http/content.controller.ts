@@ -21,8 +21,8 @@ export class ContentController {
     });
   };
 
-  listFeaturedProducts = async (_req: Request, res: Response): Promise<void> => {
-    const items = await this.getHomepageFeaturedProducts.execute();
+  listFeaturedProducts = async (req: Request, res: Response): Promise<void> => {
+    const items = await this.getHomepageFeaturedProducts.execute({ locale: req.locale });
     res.status(200).json({ items });
   };
 }

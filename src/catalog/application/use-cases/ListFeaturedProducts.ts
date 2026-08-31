@@ -1,3 +1,4 @@
+import { Locale } from "../../../shared-kernel/domain/enums/Locale";
 import { ProductQueryRepository } from "../../domain/repositories/ProductQueryRepository";
 import { ProductRatingSummary, RatingSummaryPort } from "../ports/RatingSummaryPort";
 import { ListProductsResultItem } from "./ListProducts";
@@ -7,6 +8,7 @@ const NO_RATING: ProductRatingSummary = { average: null, count: 0 };
 
 export interface ListFeaturedProductsInput {
   limit?: number;
+  locale: Locale;
 }
 
 export class ListFeaturedProducts {
@@ -18,6 +20,7 @@ export class ListFeaturedProducts {
   async execute(input: ListFeaturedProductsInput): Promise<ListProductsResultItem[]> {
     const items = await this.productQueryRepository.listFeaturedAndOnSale(
       input.limit ?? DEFAULT_FEATURED_LIMIT,
+      input.locale,
     );
 
     const ratings =

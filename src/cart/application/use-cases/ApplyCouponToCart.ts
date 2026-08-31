@@ -1,3 +1,4 @@
+import { Locale } from "../../../shared-kernel/domain/enums/Locale";
 import { CouponNotFoundException } from "../../domain/exceptions/CouponNotFoundException";
 import { CartRepository } from "../../domain/repositories/CartRepository";
 import { CouponRepository } from "../../domain/repositories/CouponRepository";
@@ -9,6 +10,7 @@ import { CatalogSnapshotPort } from "../ports/CatalogSnapshotPort";
 export interface ApplyCouponToCartInput {
   owner: CartOwner;
   code: string;
+  locale?: Locale;
 }
 
 /**
@@ -33,6 +35,7 @@ export class ApplyCouponToCart {
       cart,
       this.catalogSnapshotPort,
       this.couponRepository,
+      input.locale,
     );
     const { subtotal } = computeCartTotals(currentResponse.items, null);
 
@@ -41,7 +44,7 @@ export class ApplyCouponToCart {
     cart.applyCoupon(coupon.code);
     await this.cartRepository.save(cart);
 
-    const { response } = await buildCartResponse(cart, this.catalogSnapshotPort, this.couponRepository);
+    const { response } = await buildCartResponse(cart, this.catalogSnapshotPort, this.couponRepository, input.locale);
     return response;
   }
 }

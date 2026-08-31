@@ -1,8 +1,9 @@
-import { Product } from "../../../domain/entities/Product";
+import { Product, ProductTranslation } from "../../../domain/entities/Product";
 import { ProductVariant } from "../../../domain/entities/ProductVariant";
 import { Money } from "../../../domain/value-objects/Money";
 import { Sku } from "../../../domain/value-objects/Sku";
 import { ProductOrmEntity } from "../entities/ProductOrmEntity";
+import { ProductTranslationOrmEntity } from "../entities/ProductTranslationOrmEntity";
 import { ProductVariantOrmEntity } from "../entities/ProductVariantOrmEntity";
 
 export class ProductMapper {
@@ -26,6 +27,20 @@ export class ProductMapper {
     return orm;
   }
 
+  /**
+   * [0069]: separado de `toOrm` a propósito — `TypeOrmProductRepository.save`
+   * persiste las traducciones con un delete+insert manual en transacción
+   * (mismo patrón que `TypeOrmShippingZoneRepository`, ver ese archivo),
+   * nunca vía el cascade de `ProductOrmEntity.translations`: cascadear un
+   * array con una fila nueva sobre un producto ya existente dispara un bug
+   * de TypeORM que pone `product_id` en `NULL` en el UPDATE (mismo problema,
+   * preexistente, en `ProductOrmEntity.variants` — no se toca acá, es una
+   * historia aparte).
+   */
+  static translationsToOrm(translations: ProductTranslation[], productId: string): ProductTranslationOrmEntity[] {
+    return translations.map((translation) => this.translationToOrm(translation, productId));
+  }
+
   static toDomain(orm: ProductOrmEntity): Product {
     return Product.reconstitute({
       id: orm.id,
@@ -41,6 +56,7 @@ export class ProductMapper {
       status: orm.status,
       images: orm.images,
       variants: orm.variants.map((variant) => this.variantToDomain(variant)),
+      translations: (orm.translations ?? []).map((translation) => this.translationToDomain(translation)),
       createdAt: orm.createdAt,
     });
   }
@@ -64,6 +80,20 @@ export class ProductMapper {
     orm.widthCm = props.parcel.widthCm != null ? props.parcel.widthCm.toFixed(2) : null;
     orm.heightCm = props.parcel.heightCm != null ? props.parcel.heightCm.toFixed(2) : null;
     return orm;
+  }
+
+  private static translationToOrm(translation: ProductTranslation, productId: string): ProductTranslationOrmEntity {
+    const orm = new ProductTranslationOrmEntity();
+    orm.id = translation.id;
+    orm.productId = productId;
+    orm.locale = translation.locale;
+    orm.name = translation.name;
+    orm.description = translation.description;
+    return orm;
+  }
+
+  private static translationToDomain(orm: ProductTranslationOrmEntity): ProductTranslation {
+    return { id: orm.id, locale: orm.locale, name: orm.name, description: orm.description };
   }
 
   private static variantToDomain(orm: ProductVariantOrmEntity): ProductVariant {

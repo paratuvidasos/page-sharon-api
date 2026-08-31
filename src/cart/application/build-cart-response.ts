@@ -1,3 +1,4 @@
+import { DEFAULT_LOCALE, Locale } from "../../shared-kernel/domain/enums/Locale";
 import { Cart } from "../domain/entities/Cart";
 import { CouponRepository } from "../domain/repositories/CouponRepository";
 import { CatalogSnapshotPort } from "./ports/CatalogSnapshotPort";
@@ -48,13 +49,14 @@ export async function buildCartResponse(
   cart: Cart | null,
   catalogSnapshotPort: CatalogSnapshotPort,
   couponRepository: CouponRepository,
+  locale: Locale = DEFAULT_LOCALE,
 ): Promise<{ response: CartResponse; couponWasInvalid: boolean }> {
   if (!cart || cart.items.length === 0) {
     return { response: EMPTY_CART_RESPONSE, couponWasInvalid: false };
   }
 
   const variantIds = cart.items.map((item) => item.toProps().variantId);
-  const snapshots = await catalogSnapshotPort.execute({ variantIds });
+  const snapshots = await catalogSnapshotPort.execute({ variantIds, locale });
   const snapshotByVariantId = new Map(snapshots.map((snapshot) => [snapshot.variantId, snapshot]));
 
   const items: CartItemResponse[] = cart.items.map((item) => {

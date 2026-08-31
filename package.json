@@ -18,6 +18,7 @@
   },
   "dependencies": {
     "@asteasolutions/zod-to-openapi": "^7.3.4",
+    "@clerk/backend": "^3.16.12",
     "bcrypt": "^6.0.0",
     "cloudinary": "^2.10.1",
     "cookie-parser": "^1.4.7",

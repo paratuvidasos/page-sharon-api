@@ -1,3 +1,4 @@
+import { Locale } from "../../../shared-kernel/domain/enums/Locale";
 import { ProductNotFoundException } from "../../domain/exceptions/ProductNotFoundException";
 import { ProductQueryRepository } from "../../domain/repositories/ProductQueryRepository";
 import { ProductRepository } from "../../domain/repositories/ProductRepository";
@@ -7,6 +8,7 @@ import { ListProductsResultItem } from "./ListProducts";
 export interface ListRelatedProductsInput {
   slug: string;
   limit?: number;
+  locale: Locale;
 }
 
 const DEFAULT_RELATED_LIMIT = 8;
@@ -31,11 +33,14 @@ export class ListRelatedProducts {
     }
 
     const props = product.toProps();
-    const items = await this.productQueryRepository.findRelatedProducts({
-      productId: props.id,
-      categoryId: props.categoryId,
-      limit: input.limit ?? DEFAULT_RELATED_LIMIT,
-    });
+    const items = await this.productQueryRepository.findRelatedProducts(
+      {
+        productId: props.id,
+        categoryId: props.categoryId,
+        limit: input.limit ?? DEFAULT_RELATED_LIMIT,
+      },
+      input.locale,
+    );
 
     const ratings =
       items.length > 0 && this.ratingSummaryPort

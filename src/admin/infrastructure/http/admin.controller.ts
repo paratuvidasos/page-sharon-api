@@ -16,6 +16,8 @@ import { ListCustomers } from "../../../accounts/application/use-cases/admin/Lis
 import { ReactivateCustomer } from "../../../accounts/application/use-cases/admin/ReactivateCustomer";
 import { SuspendCustomer } from "../../../accounts/application/use-cases/admin/SuspendCustomer";
 import { SetProductFeatured } from "../../../catalog/application/use-cases/SetProductFeatured";
+import { SetProductTranslations } from "../../../catalog/application/use-cases/SetProductTranslations";
+import { GetTranslationCoverage } from "../../../catalog/application/use-cases/GetTranslationCoverage";
 import { AddProductVariant } from "../../../catalog/application/use-cases/AddProductVariant";
 import { AdjustVariantStock } from "../../../catalog/application/use-cases/AdjustVariantStock";
 import { CreateAttributeDefinition } from "../../../catalog/application/use-cases/CreateAttributeDefinition";
@@ -51,6 +53,7 @@ import { ListShippingZones } from "../../../shipping/application/use-cases/ListS
 import { SetZoneProductRestrictions } from "../../../shipping/application/use-cases/SetZoneProductRestrictions";
 import { UpdateShippingZone } from "../../../shipping/application/use-cases/UpdateShippingZone";
 import { SetFeaturedParamsSchema, SetFeaturedRequestSchema } from "./schemas/set-featured.schema";
+import { SetProductTranslationsRequestSchema } from "./schemas/product-translation.schema";
 import { CreateCouponRequestSchema } from "./schemas/create-coupon.schema";
 import {
   AttributeParamsSchema,
@@ -108,6 +111,9 @@ import {
 
 export interface AdminControllerUseCases {
   setProductFeatured: SetProductFeatured;
+  /** [0069]: traducciones y cobertura de idioma para el panel administrativo. */
+  setProductTranslations: SetProductTranslations;
+  getTranslationCoverage: GetTranslationCoverage;
   createCoupon: CreateCoupon;
   createShippingZone: CreateShippingZone;
   getShippingZoneById: GetShippingZoneById;
@@ -166,6 +172,23 @@ export class AdminController {
     const { isFeatured } = SetFeaturedRequestSchema.parse(req.body);
     await this.useCases.setProductFeatured.execute({ productId: id, isFeatured });
     res.status(204).send();
+  };
+
+  setProductTranslationsHandler = async (req: Request, res: Response): Promise<void> => {
+    const { id } = ProductParamsSchema.parse(req.params);
+    const { translations } = SetProductTranslationsRequestSchema.parse(req.body);
+    await this.useCases.setProductTranslations.execute({ productId: id, translations });
+    res.status(204).send();
+  };
+
+  getTranslationCoverageHandler = async (_req: Request, res: Response): Promise<void> => {
+    const items = await this.useCases.getTranslationCoverage.execute();
+    res.status(200).json({
+      items: items.map((item) => ({
+        ...item,
+        percentage: item.total === 0 ? 0 : Math.round((item.translated / item.total) * 100),
+      })),
+    });
   };
 
   createCouponHandler = async (req: Request, res: Response): Promise<void> => {

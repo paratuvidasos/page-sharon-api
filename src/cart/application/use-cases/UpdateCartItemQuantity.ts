@@ -1,3 +1,4 @@
+import { Locale } from "../../../shared-kernel/domain/enums/Locale";
 import { CartItemNotFoundException } from "../../domain/exceptions/CartItemNotFoundException";
 import { InsufficientStockException } from "../../domain/exceptions/InsufficientStockException";
 import { CartRepository } from "../../domain/repositories/CartRepository";
@@ -10,6 +11,7 @@ export interface UpdateCartItemQuantityInput {
   owner: CartOwner;
   itemId: string;
   quantity: number;
+  locale?: Locale;
 }
 
 export class UpdateCartItemQuantity {
@@ -30,7 +32,7 @@ export class UpdateCartItemQuantity {
       throw new CartItemNotFoundException();
     }
 
-    const [snapshot] = await this.catalogSnapshotPort.execute({ variantIds: [item.variantId] });
+    const [snapshot] = await this.catalogSnapshotPort.execute({ variantIds: [item.variantId], locale: input.locale });
     if (snapshot && input.quantity > snapshot.stockQuantity) {
       throw new InsufficientStockException(snapshot.stockQuantity);
     }
@@ -38,7 +40,7 @@ export class UpdateCartItemQuantity {
     cart.updateItemQuantity(input.itemId, input.quantity);
     await this.cartRepository.save(cart);
 
-    const { response } = await buildCartResponse(cart, this.catalogSnapshotPort, this.couponRepository);
+    const { response } = await buildCartResponse(cart, this.catalogSnapshotPort, this.couponRepository, input.locale);
     return response;
   }
 }

@@ -42,6 +42,9 @@ export function buildUserProps(overrides: Partial<UserProps> = {}): UserProps {
     failedLoginAttempts: 0,
     lockedUntil: null,
     addresses: [],
+    clerkUserId: null,
+    preferredLocale: null,
+    preferredCurrency: null,
     ...overrides,
   };
 }

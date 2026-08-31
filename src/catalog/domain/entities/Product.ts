@@ -1,10 +1,20 @@
+import { DEFAULT_LOCALE, Locale } from "../../../shared-kernel/domain/enums/Locale";
 import { ProductStatus } from "../enums/ProductStatus";
 import { InvalidProductStatusTransitionException } from "../exceptions/InvalidProductStatusTransitionException";
+import { InvalidProductTranslationException } from "../exceptions/InvalidProductTranslationException";
 import { ProductMustHaveOneVariantException } from "../exceptions/ProductMustHaveOneVariantException";
 import { ProductRequiresVariantException } from "../exceptions/ProductRequiresVariantException";
 import { VariantNotFoundException } from "../exceptions/VariantNotFoundException";
 import { Money } from "../value-objects/Money";
 import { CreateProductVariantInput, ProductVariant, UpdateProductVariantInput } from "./ProductVariant";
+
+/** [0069]: nombre/descripción del producto en un idioma distinto al español base. */
+export interface ProductTranslation {
+  id: string;
+  locale: Locale;
+  name: string;
+  description: string;
+}
 
 export interface ProductProps {
   id: string;
@@ -20,6 +30,7 @@ export interface ProductProps {
   status: ProductStatus;
   images: string[];
   variants: ProductVariant[];
+  translations: ProductTranslation[];
   createdAt: Date;
 }
 
@@ -72,6 +83,7 @@ export class Product {
       status: ProductStatus.ACTIVE,
       images: input.images ?? [],
       variants: input.variants.map((variant) => ProductVariant.create(variant)),
+      translations: [],
       createdAt: new Date(),
     });
   }
@@ -94,6 +106,55 @@ export class Product {
 
   get variants(): ProductVariant[] {
     return [...this.props.variants];
+  }
+
+  get translations(): ProductTranslation[] {
+    return [...this.props.translations];
+  }
+
+  /**
+   * [0069]: nombre en `locale`, con el español base como respaldo si no hay
+   * traducción para ese idioma o el idioma pedido es el mismo base.
+   */
+  localizedName(locale: Locale): string {
+    if (locale === DEFAULT_LOCALE) return this.props.name;
+    return this.props.translations.find((t) => t.locale === locale)?.name || this.props.name;
+  }
+
+  localizedDescription(locale: Locale): string {
+    if (locale === DEFAULT_LOCALE) return this.props.description;
+    return this.props.translations.find((t) => t.locale === locale)?.description || this.props.description;
+  }
+
+  /**
+   * [0069]: reemplaza la traducción completa de un idioma (el panel siempre
+   * manda nombre y descripción juntos, igual que `ShippingZone.replaceRates`).
+   * `DEFAULT_LOCALE` se rechaza porque el español ya vive en `name`/
+   * `description` — traducirlo ahí también abriría dos fuentes de verdad
+   * que se pueden desincronizar.
+   *
+   * `newId` lo genera quien llama (mismo criterio que `ProductVariant.create`:
+   * el dominio no genera ids) y solo se usa si todavía no existe traducción
+   * para ese idioma — si ya existe, se conserva su id para que el mapper no
+   * la trate como una fila nueva en cada guardado.
+   */
+  setTranslation(locale: Locale, input: { name: string; description: string }, newId: string): void {
+    if (locale === DEFAULT_LOCALE) {
+      throw new InvalidProductTranslationException(
+        `${DEFAULT_LOCALE} es el idioma base del catálogo; no se traduce a sí mismo.`,
+      );
+    }
+
+    const existingId = this.props.translations.find((t) => t.locale === locale)?.id;
+    const others = this.props.translations.filter((t) => t.locale !== locale);
+    this.props.translations = [
+      ...others,
+      { id: existingId ?? newId, locale, name: input.name, description: input.description },
+    ];
+  }
+
+  removeTranslation(locale: Locale): void {
+    this.props.translations = this.props.translations.filter((t) => t.locale !== locale);
   }
 
   /**
@@ -185,6 +246,6 @@ export class Product {
   }
 
   toProps(): ProductProps {
-    return { ...this.props, variants: [...this.props.variants] };
+    return { ...this.props, variants: [...this.props.variants], translations: [...this.props.translations] };
   }
 }

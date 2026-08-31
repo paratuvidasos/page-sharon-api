@@ -10,6 +10,7 @@ import { buildAftersalesModule } from "./aftersales/infrastructure/http/aftersal
 import { buildCartModule } from "./cart/infrastructure/http/cart.module";
 import { buildCatalogModule } from "./catalog/infrastructure/http/catalog.module";
 import { buildContentModule } from "./content/infrastructure/http/content.module";
+import { buildLocalizationModule } from "./localization/infrastructure/http/localization.module";
 import { buildNotificationsModule } from "./notifications/infrastructure/http/notifications.module";
 import { buildOrdersModule } from "./orders/infrastructure/http/orders.module";
 import { buildPaymentsModule } from "./payments/infrastructure/http/payments.module";
@@ -23,7 +24,10 @@ import {
   ConfiguredExchangeRateProvider,
   readSupportedCurrencies,
 } from "./shared-kernel/infrastructure/exchange/ConfiguredExchangeRateProvider";
+import { buildGeoLocationProvider } from "./shared-kernel/infrastructure/geo/build-geo-location-provider";
+import { readSupportedLocales } from "./shared-kernel/infrastructure/i18n/supported-locales";
 import { errorHandler } from "./shared-kernel/infrastructure/http/error-handler";
+import { buildResolveLocale } from "./shared-kernel/infrastructure/http/resolve-locale.middleware";
 import { getOpenApiDocument } from "./shared-kernel/infrastructure/swagger/registry";
 
 const port = process.env.PORT ?? 3000;
@@ -40,6 +44,11 @@ async function bootstrap(): Promise<void> {
   await AppDataSource.initialize();
 
   const app = express();
+  // [0070]: `X-Forwarded-For` solo es confiable detrás de nuestro propio
+  // proxy/balanceador — sin esto, `req.socket.remoteAddress` sería la IP
+  // del proxy y no la del visitante, y la sugerencia de idioma/moneda por
+  // geo-IP resolvería siempre el mismo país.
+  app.set("trust proxy", 1);
   app.use(cors({ origin: process.env.FRONTEND_URL, credentials: true }));
 
   const payments = buildPaymentsModule(AppDataSource);
@@ -58,6 +67,12 @@ async function bootstrap(): Promise<void> {
 
   const exchangeRateProvider = new ConfiguredExchangeRateProvider();
   const emailSender = buildEmailSender();
+  const supportedLocales = readSupportedLocales();
+  const supportedCurrencies = readSupportedCurrencies();
+
+  // [0067]/[0068]: resuelve `req.locale`/`req.currency` para todas las rutas
+  // que se registren después de esta línea — catálogo, carrito, cuentas.
+  app.use(buildResolveLocale(supportedLocales, supportedCurrencies));
 
   // [0063]: mismo problema de ciclo que `lazyRatingSummaryPort` — el listado
   // de clientes de `accounts` necesita el resumen de compras de `orders`,
@@ -106,7 +121,12 @@ async function bootstrap(): Promise<void> {
         : Promise.resolve(false),
   };
 
-  const catalog = buildCatalogModule(AppDataSource, lazyRatingSummaryPort, lazyProductOrderHistoryPort);
+  const catalog = buildCatalogModule(
+    AppDataSource,
+    lazyRatingSummaryPort,
+    lazyProductOrderHistoryPort,
+    supportedLocales,
+  );
   const cart = buildCartModule(AppDataSource, catalog.getCartProductSnapshots);
 
   // Después de `catalog` porque desde [0048] `shipping` necesita las medidas
@@ -136,7 +156,7 @@ async function bootstrap(): Promise<void> {
     emailSender,
     registerUserForCheckout: accounts.registerUserForCheckout,
     loginUser: accounts.loginUser,
-    supportedCurrencies: readSupportedCurrencies(),
+    supportedCurrencies,
     reservationTtlMinutes: readReservationTtlMinutes(),
   });
   app.use("/api/v1/orders", orders.router);
@@ -158,6 +178,16 @@ async function bootstrap(): Promise<void> {
 
   ratingSummaryPort = aftersales.getRatingSummaryForProducts;
 
+  const localization = buildLocalizationModule(
+    supportedLocales,
+    supportedCurrencies,
+    exchangeRateProvider,
+    buildGeoLocationProvider(),
+    accounts.getUserLocalePreference,
+    accounts.updateLocalePreference,
+  );
+  app.use("/api/v1/localization", localization.router);
+
   app.use("/api/v1/products", catalog.productsRouter);
   app.use("/api/v1/categories", catalog.categoriesRouter);
   app.use("/api/v1/cart", cart.router);
@@ -175,6 +205,8 @@ async function bootstrap(): Promise<void> {
     "/api/v1/admin",
     buildAdminModule({
       setProductFeatured: catalog.setProductFeatured,
+      setProductTranslations: catalog.setProductTranslations,
+      getTranslationCoverage: catalog.getTranslationCoverage,
       createCoupon: cart.createCoupon,
       createShippingZone: shipping.createShippingZone,
       getShippingZoneById: shipping.getShippingZoneById,

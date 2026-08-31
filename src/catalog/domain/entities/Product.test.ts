@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
+import { DEFAULT_LOCALE, Locale } from "../../../shared-kernel/domain/enums/Locale";
 import { ProductStatus } from "../enums/ProductStatus";
 import { InvalidProductStatusTransitionException } from "../exceptions/InvalidProductStatusTransitionException";
+import { InvalidProductTranslationException } from "../exceptions/InvalidProductTranslationException";
 import { ProductMustHaveOneVariantException } from "../exceptions/ProductMustHaveOneVariantException";
 import { ProductRequiresVariantException } from "../exceptions/ProductRequiresVariantException";
 import { VariantNotFoundException } from "../exceptions/VariantNotFoundException";
@@ -89,5 +91,50 @@ describe("Product — archive/reactivate", () => {
     const product = createProduct();
 
     expect(() => product.reactivate()).toThrow(InvalidProductStatusTransitionException);
+  });
+});
+
+describe("Product — traducciones", () => {
+  it("no permite traducir al idioma base del catálogo", () => {
+    const product = createProduct();
+
+    expect(() =>
+      product.setTranslation(DEFAULT_LOCALE, { name: "x", description: "y" }, "translation-1"),
+    ).toThrow(InvalidProductTranslationException);
+  });
+
+  it("localizedName cae al nombre base si no hay traducción para el idioma pedido", () => {
+    const product = createProduct();
+
+    expect(product.localizedName(Locale.EN)).toBe("Shampoo rizos definidos");
+  });
+
+  it("localizedName/localizedDescription devuelven la traducción una vez seteada", () => {
+    const product = createProduct();
+    product.setTranslation(Locale.EN, { name: "Curl shampoo", description: "For curly hair." }, "translation-1");
+
+    expect(product.localizedName(Locale.EN)).toBe("Curl shampoo");
+    expect(product.localizedDescription(Locale.EN)).toBe("For curly hair.");
+    expect(product.localizedName(DEFAULT_LOCALE)).toBe("Shampoo rizos definidos");
+  });
+
+  it("conserva el id de la traducción existente al reemplazarla, en vez de crear una fila nueva", () => {
+    const product = createProduct();
+    product.setTranslation(Locale.EN, { name: "Curl shampoo", description: "For curly hair." }, "translation-1");
+    product.setTranslation(Locale.EN, { name: "Curl shampoo v2", description: "Updated." }, "translation-2");
+
+    expect(product.translations).toEqual([
+      { id: "translation-1", locale: Locale.EN, name: "Curl shampoo v2", description: "Updated." },
+    ]);
+  });
+
+  it("removeTranslation quita la traducción del idioma", () => {
+    const product = createProduct();
+    product.setTranslation(Locale.EN, { name: "Curl shampoo", description: "For curly hair." }, "translation-1");
+
+    product.removeTranslation(Locale.EN);
+
+    expect(product.translations).toEqual([]);
+    expect(product.localizedName(Locale.EN)).toBe("Shampoo rizos definidos");
   });
 });

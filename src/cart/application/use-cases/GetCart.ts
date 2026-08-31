@@ -1,3 +1,4 @@
+import { Locale } from "../../../shared-kernel/domain/enums/Locale";
 import { CartRepository } from "../../domain/repositories/CartRepository";
 import { CouponRepository } from "../../domain/repositories/CouponRepository";
 import { buildCartResponse, CartResponse } from "../build-cart-response";
@@ -11,12 +12,13 @@ export class GetCart {
     private readonly couponRepository: CouponRepository,
   ) {}
 
-  async execute(owner: CartOwner): Promise<CartResponse> {
+  async execute(owner: CartOwner, locale?: Locale): Promise<CartResponse> {
     const cart = await findCartByOwner(this.cartRepository, owner);
     const { response, couponWasInvalid } = await buildCartResponse(
       cart,
       this.catalogSnapshotPort,
       this.couponRepository,
+      locale,
     );
 
     if (cart && couponWasInvalid) {

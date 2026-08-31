@@ -1,3 +1,4 @@
+import { Locale } from "../../../shared-kernel/domain/enums/Locale";
 import { AutomaticFeaturedRule } from "../../domain/enums/AutomaticFeaturedRule";
 import { FeaturedSelectionMode } from "../../domain/enums/FeaturedSelectionMode";
 import { HomepageFeaturedConfigRepository } from "../../domain/repositories/HomepageFeaturedConfigRepository";
@@ -13,12 +14,12 @@ export interface FeaturedProductItem {
 
 /** Puerto expuesto por `catalog` — ver `GetProductsByIds`. */
 export interface GetProductsByIdsPort {
-  execute(input: { productIds: string[] }): Promise<FeaturedProductItem[]>;
+  execute(input: { productIds: string[]; locale: Locale }): Promise<FeaturedProductItem[]>;
 }
 
 /** Puerto expuesto por `catalog` — ver `ListTopSellingProducts`/`ListNewestProducts`. */
 export interface ListProductsPort {
-  execute(input: { limit: number }): Promise<FeaturedProductItem[]>;
+  execute(input: { limit: number; locale: Locale }): Promise<FeaturedProductItem[]>;
 }
 
 const DEFAULT_LIMIT = 8;
@@ -39,16 +40,16 @@ export class GetHomepageFeaturedProducts {
     private readonly listNewestPort: ListProductsPort,
   ) {}
 
-  async execute(input: { limit?: number } = {}): Promise<FeaturedProductItem[]> {
+  async execute(input: { limit?: number; locale: Locale }): Promise<FeaturedProductItem[]> {
     const config = await this.homepageFeaturedConfigRepository.get();
     const limit = input.limit ?? DEFAULT_LIMIT;
 
     if (config.mode === FeaturedSelectionMode.MANUAL) {
-      return this.getProductsByIdsPort.execute({ productIds: config.manualProductIds });
+      return this.getProductsByIdsPort.execute({ productIds: config.manualProductIds, locale: input.locale });
     }
 
     return config.automaticRule === AutomaticFeaturedRule.NEWEST
-      ? this.listNewestPort.execute({ limit })
-      : this.listTopSellingPort.execute({ limit });
+      ? this.listNewestPort.execute({ limit, locale: input.locale })
+      : this.listTopSellingPort.execute({ limit, locale: input.locale });
   }
 }

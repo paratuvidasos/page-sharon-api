@@ -8,6 +8,7 @@ import {
   UpdateDateColumn,
 } from "typeorm";
 import { ProductStatus } from "../../../domain/enums/ProductStatus";
+import { ProductTranslationOrmEntity } from "./ProductTranslationOrmEntity";
 import { ProductVariantOrmEntity } from "./ProductVariantOrmEntity";
 
 // category_id es un uuid simple, sin relación de TypeORM: Product y
@@ -79,6 +80,13 @@ export class ProductOrmEntity {
     orphanedRowAction: "delete",
   })
   variants!: ProductVariantOrmEntity[];
+
+  // [0069]: sin `cascade` — `TypeOrmProductRepository.save` persiste las
+  // traducciones con un delete+insert manual en transacción (ver ese
+  // archivo), no vía cascade de TypeORM. Esta relación solo se usa para
+  // lectura (`relations: { translations: true }` en `findById`/`findBySlug`).
+  @OneToMany(() => ProductTranslationOrmEntity, (translation) => translation.product)
+  translations!: ProductTranslationOrmEntity[];
 
   @CreateDateColumn({ name: "created_at", type: "timestamptz" })
   createdAt!: Date;

@@ -3,6 +3,7 @@ import { CouponRepository } from "../../domain/repositories/CouponRepository";
 import { CartProductUnavailableException } from "../../domain/exceptions/CartProductUnavailableException";
 import { InsufficientStockException } from "../../domain/exceptions/InsufficientStockException";
 import { generateId } from "../../../shared-kernel/infrastructure/ids/generate-id";
+import { Locale } from "../../../shared-kernel/domain/enums/Locale";
 import { buildCartResponse, CartResponse } from "../build-cart-response";
 import { CartOwner, getOrCreateCartByOwner } from "../cart-owner";
 import { CatalogSnapshotPort } from "../ports/CatalogSnapshotPort";
@@ -11,6 +12,7 @@ export interface AddItemToCartInput {
   owner: CartOwner;
   variantId: string;
   quantity: number;
+  locale?: Locale;
 }
 
 export class AddItemToCart {
@@ -21,7 +23,7 @@ export class AddItemToCart {
   ) {}
 
   async execute(input: AddItemToCartInput): Promise<CartResponse> {
-    const [snapshot] = await this.catalogSnapshotPort.execute({ variantIds: [input.variantId] });
+    const [snapshot] = await this.catalogSnapshotPort.execute({ variantIds: [input.variantId], locale: input.locale });
     if (!snapshot || !snapshot.isActive) {
       throw new CartProductUnavailableException();
     }
@@ -43,7 +45,7 @@ export class AddItemToCart {
     });
 
     await this.cartRepository.save(cart);
-    const { response } = await buildCartResponse(cart, this.catalogSnapshotPort, this.couponRepository);
+    const { response } = await buildCartResponse(cart, this.catalogSnapshotPort, this.couponRepository, input.locale);
     return response;
   }
 }

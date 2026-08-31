@@ -1,3 +1,4 @@
+import { Locale } from "../../../shared-kernel/domain/enums/Locale";
 import { PaginationMeta, buildPaginationMeta } from "../../../shared-kernel/infrastructure/http/pagination";
 import { ProductQueryRepository } from "../../domain/repositories/ProductQueryRepository";
 import { ProductRatingSummary, RatingSummaryPort } from "../ports/RatingSummaryPort";
@@ -7,6 +8,7 @@ export interface SearchProductsInput {
   term: string;
   page: number;
   limit: number;
+  locale: Locale;
 }
 
 export interface SearchProductsResult {
@@ -23,10 +25,11 @@ export class SearchProducts {
   ) {}
 
   async execute(input: SearchProductsInput): Promise<SearchProductsResult> {
-    const { items, total } = await this.productQueryRepository.searchByKeyword(input.term, {
-      page: input.page,
-      limit: input.limit,
-    });
+    const { items, total } = await this.productQueryRepository.searchByKeyword(
+      input.term,
+      { page: input.page, limit: input.limit },
+      input.locale,
+    );
 
     const ratings =
       items.length > 0 && this.ratingSummaryPort

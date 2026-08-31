@@ -16,6 +16,7 @@ export function buildAccountsRoutes(
   router.get("/verify-email", asyncHandler(controller.verifyEmailByToken));
   router.post("/resend-verification-email", asyncHandler(controller.resendVerification));
   router.post("/login", asyncHandler(controller.login));
+  router.post("/oauth/google", asyncHandler(controller.loginWithGoogle));
   router.post("/refresh-token", asyncHandler(controller.refreshToken));
   router.post("/logout", asyncHandler(controller.logout));
   router.post("/logout-all", authenticate, asyncHandler(controller.logoutAllSessions));
@@ -24,6 +25,7 @@ export function buildAccountsRoutes(
   router.get("/me", authenticate, asyncHandler(controller.getProfile));
   router.patch("/me", authenticate, uploadAvatar, asyncHandler(controller.updateProfile));
   router.delete("/me", authenticate, asyncHandler(controller.deleteAccount));
+  router.post("/set-password", authenticate, asyncHandler(controller.setPassword));
   router.use("/me/addresses", buildAddressesRoutes(addressesController, authenticate));
 
   return router;

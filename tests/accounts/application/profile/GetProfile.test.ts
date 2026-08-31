@@ -20,6 +20,9 @@ describe("GetProfile", () => {
       phone: "+573001234567",
       avatarUrl: null,
       role: user.role,
+      hasPassword: true,
+      preferredLocale: null,
+      preferredCurrency: null,
     });
   });
 

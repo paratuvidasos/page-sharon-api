@@ -1,4 +1,5 @@
 import { DataSource, Repository, SelectQueryBuilder } from "typeorm";
+import { DEFAULT_LOCALE, Locale } from "../../../shared-kernel/domain/enums/Locale";
 import { InventorySort } from "../../domain/enums/InventorySort";
 import { ProductSort } from "../../domain/enums/ProductSort";
 import { ProductStatus } from "../../domain/enums/ProductStatus";
@@ -17,24 +18,57 @@ import {
   ProductSuggestion,
   ProductVariantSnapshot,
   RelatedProductsFilter,
+  TranslationCoverageItem,
 } from "../../domain/repositories/ProductQueryRepository";
 import { ProductOrmEntity } from "./entities/ProductOrmEntity";
+import { ProductTranslationOrmEntity } from "./entities/ProductTranslationOrmEntity";
 import { ProductVariantOrmEntity } from "./entities/ProductVariantOrmEntity";
 
 const ATTRIBUTE_KEYS = ["hairType", "line", "mainIngredient"] as const;
 
+interface ProductTranslationLookup {
+  name: string;
+  description: string;
+}
+
 export class TypeOrmProductQueryRepository implements ProductQueryRepository {
   private readonly productOrmRepository: Repository<ProductOrmEntity>;
   private readonly variantOrmRepository: Repository<ProductVariantOrmEntity>;
+  private readonly translationOrmRepository: Repository<ProductTranslationOrmEntity>;
 
   constructor(dataSource: DataSource) {
     this.productOrmRepository = dataSource.getRepository(ProductOrmEntity);
     this.variantOrmRepository = dataSource.getRepository(ProductVariantOrmEntity);
+    this.translationOrmRepository = dataSource.getRepository(ProductTranslationOrmEntity);
+  }
+
+  /**
+   * [0069]: nombre/descripción traducidos para el idioma pedido, en un solo
+   * query por lote (nunca uno por producto). El español base nunca tiene
+   * fila en `product_translations` (`Product.setTranslation` lo rechaza), así
+   * que para `DEFAULT_LOCALE` ni siquiera se consulta.
+   */
+  private async translationsByProductId(
+    productIds: string[],
+    locale: Locale,
+  ): Promise<Map<string, ProductTranslationLookup>> {
+    if (locale === DEFAULT_LOCALE || productIds.length === 0) {
+      return new Map();
+    }
+
+    const rows = await this.translationOrmRepository
+      .createQueryBuilder("translation")
+      .where("translation.productId IN (:...productIds)", { productIds })
+      .andWhere("translation.locale = :locale", { locale })
+      .getMany();
+
+    return new Map(rows.map((row) => [row.productId, { name: row.name, description: row.description }]));
   }
 
   async listForCatalogPage(
     filter: ProductListFilter,
     pagination: ProductListPagination,
+    locale: Locale,
   ): Promise<ProductListPage> {
     const qb = this.baseQuery({ status: filter.status, categoryId: filter.categoryId });
 
@@ -71,11 +105,19 @@ export class TypeOrmProductQueryRepository implements ProductQueryRepository {
     // uno-a-muchos sobre la página ya paginada: TypeORM no garantiza
     // skip/take correctos sobre el agregado raíz cuando el query builder
     // trae relaciones "to-many" en la misma consulta.
-    const maxStockByProductId = await this.getMaxStockByProductId(products.map((product) => product.id));
+    const productIds = products.map((product) => product.id);
+    const [maxStockByProductId, translationsByProductId] = await Promise.all([
+      this.getMaxStockByProductId(productIds),
+      this.translationsByProductId(productIds, locale),
+    ]);
 
     return {
       items: products.map((product) =>
-        this.toListItem(product, maxStockByProductId.get(product.id) ?? 0),
+        this.toListItem(
+          product,
+          maxStockByProductId.get(product.id) ?? 0,
+          translationsByProductId.get(product.id),
+        ),
       ),
       total,
     };
@@ -100,7 +142,11 @@ export class TypeOrmProductQueryRepository implements ProductQueryRepository {
     };
   }
 
-  async searchByKeyword(term: string, pagination: ProductListPagination): Promise<ProductListPage> {
+  async searchByKeyword(
+    term: string,
+    pagination: ProductListPagination,
+    locale: Locale,
+  ): Promise<ProductListPage> {
     const qb = this.productOrmRepository
       .createQueryBuilder("product")
       .leftJoin("categories", "category", "category.id = product.categoryId")
@@ -129,15 +175,21 @@ export class TypeOrmProductQueryRepository implements ProductQueryRepository {
       return { items: [], total };
     }
 
-    const maxStockByProductId = await this.getMaxStockByProductId(products.map((product) => product.id));
+    const productIds = products.map((product) => product.id);
+    const [maxStockByProductId, translationsByProductId] = await Promise.all([
+      this.getMaxStockByProductId(productIds),
+      this.translationsByProductId(productIds, locale),
+    ]);
 
     return {
-      items: products.map((product) => this.toListItem(product, maxStockByProductId.get(product.id) ?? 0)),
+      items: products.map((product) =>
+        this.toListItem(product, maxStockByProductId.get(product.id) ?? 0, translationsByProductId.get(product.id)),
+      ),
       total,
     };
   }
 
-  async suggestByPrefix(prefix: string, limit: number): Promise<ProductSuggestion[]> {
+  async suggestByPrefix(prefix: string, limit: number, locale: Locale): Promise<ProductSuggestion[]> {
     const rows = await this.productOrmRepository
       .createQueryBuilder("product")
       .where("product.status = :status", { status: ProductStatus.ACTIVE })
@@ -146,15 +198,20 @@ export class TypeOrmProductQueryRepository implements ProductQueryRepository {
       .take(limit)
       .getMany();
 
+    const translationsByProductId = await this.translationsByProductId(
+      rows.map((product) => product.id),
+      locale,
+    );
+
     return rows.map((product) => ({
       id: product.id,
       slug: product.slug,
-      name: product.name,
+      name: translationsByProductId.get(product.id)?.name || product.name,
       thumbnailUrl: product.images[0] ?? null,
     }));
   }
 
-  async findRelatedProducts(filter: RelatedProductsFilter): Promise<ProductListItem[]> {
+  async findRelatedProducts(filter: RelatedProductsFilter, locale: Locale): Promise<ProductListItem[]> {
     const products = await this.productOrmRepository
       .createQueryBuilder("product")
       .where("product.status = :status", { status: ProductStatus.ACTIVE })
@@ -172,12 +229,18 @@ export class TypeOrmProductQueryRepository implements ProductQueryRepository {
       return [];
     }
 
-    const maxStockByProductId = await this.getMaxStockByProductId(products.map((product) => product.id));
+    const productIds = products.map((product) => product.id);
+    const [maxStockByProductId, translationsByProductId] = await Promise.all([
+      this.getMaxStockByProductId(productIds),
+      this.translationsByProductId(productIds, locale),
+    ]);
 
-    return products.map((product) => this.toListItem(product, maxStockByProductId.get(product.id) ?? 0));
+    return products.map((product) =>
+      this.toListItem(product, maxStockByProductId.get(product.id) ?? 0, translationsByProductId.get(product.id)),
+    );
   }
 
-  async findByIds(productIds: string[]): Promise<ProductListItem[]> {
+  async findByIds(productIds: string[], locale: Locale): Promise<ProductListItem[]> {
     if (productIds.length === 0) {
       return [];
     }
@@ -192,16 +255,23 @@ export class TypeOrmProductQueryRepository implements ProductQueryRepository {
       return [];
     }
 
-    const maxStockByProductId = await this.getMaxStockByProductId(products.map((product) => product.id));
+    const foundIds = products.map((product) => product.id);
+    const [maxStockByProductId, translationsByProductId] = await Promise.all([
+      this.getMaxStockByProductId(foundIds),
+      this.translationsByProductId(foundIds, locale),
+    ]);
     const byId = new Map(
-      products.map((product) => [product.id, this.toListItem(product, maxStockByProductId.get(product.id) ?? 0)]),
+      products.map((product) => [
+        product.id,
+        this.toListItem(product, maxStockByProductId.get(product.id) ?? 0, translationsByProductId.get(product.id)),
+      ]),
     );
 
     // Se respeta el orden pedido (el que definió el admin), no el de la query.
     return productIds.map((id) => byId.get(id)).filter((item): item is ProductListItem => item !== undefined);
   }
 
-  async listTopSelling(limit: number): Promise<ProductListItem[]> {
+  async listTopSelling(limit: number, locale: Locale): Promise<ProductListItem[]> {
     const products = await this.productOrmRepository
       .createQueryBuilder("product")
       .where("product.status = :status", { status: ProductStatus.ACTIVE })
@@ -217,11 +287,17 @@ export class TypeOrmProductQueryRepository implements ProductQueryRepository {
       return [];
     }
 
-    const maxStockByProductId = await this.getMaxStockByProductId(products.map((product) => product.id));
-    return products.map((product) => this.toListItem(product, maxStockByProductId.get(product.id) ?? 0));
+    const topSellingIds = products.map((product) => product.id);
+    const [maxStockByProductId, translationsByProductId] = await Promise.all([
+      this.getMaxStockByProductId(topSellingIds),
+      this.translationsByProductId(topSellingIds, locale),
+    ]);
+    return products.map((product) =>
+      this.toListItem(product, maxStockByProductId.get(product.id) ?? 0, translationsByProductId.get(product.id)),
+    );
   }
 
-  async listNewest(limit: number): Promise<ProductListItem[]> {
+  async listNewest(limit: number, locale: Locale): Promise<ProductListItem[]> {
     const products = await this.productOrmRepository
       .createQueryBuilder("product")
       .where("product.status = :status", { status: ProductStatus.ACTIVE })
@@ -236,11 +312,17 @@ export class TypeOrmProductQueryRepository implements ProductQueryRepository {
       return [];
     }
 
-    const maxStockByProductId = await this.getMaxStockByProductId(products.map((product) => product.id));
-    return products.map((product) => this.toListItem(product, maxStockByProductId.get(product.id) ?? 0));
+    const newestIds = products.map((product) => product.id);
+    const [maxStockByProductId, translationsByProductId] = await Promise.all([
+      this.getMaxStockByProductId(newestIds),
+      this.translationsByProductId(newestIds, locale),
+    ]);
+    return products.map((product) =>
+      this.toListItem(product, maxStockByProductId.get(product.id) ?? 0, translationsByProductId.get(product.id)),
+    );
   }
 
-  async listFeaturedAndOnSale(limit: number): Promise<ProductListItem[]> {
+  async listFeaturedAndOnSale(limit: number, locale: Locale): Promise<ProductListItem[]> {
     const products = await this.productOrmRepository
       .createQueryBuilder("product")
       .where("product.status = :status", { status: ProductStatus.ACTIVE })
@@ -254,12 +336,18 @@ export class TypeOrmProductQueryRepository implements ProductQueryRepository {
       return [];
     }
 
-    const maxStockByProductId = await this.getMaxStockByProductId(products.map((product) => product.id));
+    const featuredIds = products.map((product) => product.id);
+    const [maxStockByProductId, translationsByProductId] = await Promise.all([
+      this.getMaxStockByProductId(featuredIds),
+      this.translationsByProductId(featuredIds, locale),
+    ]);
 
-    return products.map((product) => this.toListItem(product, maxStockByProductId.get(product.id) ?? 0));
+    return products.map((product) =>
+      this.toListItem(product, maxStockByProductId.get(product.id) ?? 0, translationsByProductId.get(product.id)),
+    );
   }
 
-  async findVariantSnapshots(variantIds: string[]): Promise<ProductVariantSnapshot[]> {
+  async findVariantSnapshots(variantIds: string[], locale: Locale): Promise<ProductVariantSnapshot[]> {
     if (variantIds.length === 0) {
       return [];
     }
@@ -267,9 +355,15 @@ export class TypeOrmProductQueryRepository implements ProductQueryRepository {
     const rows = await this.variantOrmRepository
       .createQueryBuilder("variant")
       .innerJoin("products", "product", "product.id = variant.productId")
+      .leftJoin(
+        "product_translations",
+        "translation",
+        "translation.product_id = product.id AND translation.locale = :locale",
+        { locale },
+      )
       .select("variant.id", "variantId")
       .addSelect("product.id", "productId")
-      .addSelect("product.name", "productName")
+      .addSelect("COALESCE(NULLIF(translation.name, ''), product.name)", "productName")
       .addSelect("variant.sku", "sku")
       .addSelect("product.status", "status")
       .addSelect("product.images", "images")
@@ -476,16 +570,42 @@ export class TypeOrmProductQueryRepository implements ProductQueryRepository {
     };
   }
 
-  private toListItem(product: ProductOrmEntity, maxVariantStock: number): ProductListItem {
+  private toListItem(
+    product: ProductOrmEntity,
+    maxVariantStock: number,
+    translation?: ProductTranslationLookup,
+  ): ProductListItem {
     return {
       id: product.id,
       slug: product.slug,
-      name: product.name,
+      name: translation?.name || product.name,
       thumbnailUrl: product.images[0] ?? null,
       basePrice: Number(product.basePrice),
       compareAtPrice: product.compareAtPrice != null ? Number(product.compareAtPrice) : null,
       stockStatus: computeStockStatus(maxVariantStock),
     };
+  }
+
+  async countTranslatedByLocale(locales: Locale[]): Promise<TranslationCoverageItem[]> {
+    const total = await this.productOrmRepository.count({ where: { status: ProductStatus.ACTIVE } });
+
+    const rows = await this.translationOrmRepository
+      .createQueryBuilder("translation")
+      .innerJoin("products", "product", "product.id = translation.productId")
+      .select("translation.locale", "locale")
+      .addSelect("COUNT(DISTINCT translation.productId)", "translated")
+      .where("product.status = :status", { status: ProductStatus.ACTIVE })
+      .andWhere("translation.locale IN (:...locales)", { locales })
+      .groupBy("translation.locale")
+      .getRawMany<{ locale: Locale; translated: string }>();
+
+    const translatedByLocale = new Map(rows.map((row) => [row.locale, Number(row.translated)]));
+
+    return locales.map((locale) => ({
+      locale,
+      translated: translatedByLocale.get(locale) ?? 0,
+      total,
+    }));
   }
 }
 

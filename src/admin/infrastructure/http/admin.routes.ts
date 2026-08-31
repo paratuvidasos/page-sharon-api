@@ -7,6 +7,7 @@ import "./schemas/order-fulfillment.schema";
 import "./schemas/category.schema";
 import "./schemas/attribute.schema";
 import "./schemas/product.schema";
+import "./schemas/product-translation.schema";
 import "./schemas/inventory.schema";
 import "./schemas/list-orders.schema";
 import "./schemas/update-coupon.schema";
@@ -87,6 +88,10 @@ export function buildAdminRoutes(
   router.post("/attributes", asyncHandler(controller.createAttributeHandler));
   router.patch("/attributes/:id", asyncHandler(controller.updateAttributeHandler));
   router.delete("/attributes/:id", asyncHandler(controller.deleteAttributeHandler));
+
+  // [0069]: traducciones y cobertura de idioma.
+  router.get("/products/translation-coverage", asyncHandler(controller.getTranslationCoverageHandler));
+  router.put("/products/:id/translations", asyncHandler(controller.setProductTranslationsHandler));
 
   // [0057]: CRUD de productos y variantes.
   router.post("/products", asyncHandler(controller.createProductHandler));

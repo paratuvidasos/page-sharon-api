@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { DataSource } from "typeorm";
+import { Locale } from "../../../shared-kernel/domain/enums/Locale";
 import { OrderPaid } from "../../../shared-kernel/domain/events/OrderPaid";
 import { domainEventBus } from "../../../shared-kernel/infrastructure/events/InMemoryDomainEventBus";
 import { buildFileStorage } from "../../../shared-kernel/infrastructure/storage/build-file-storage";
@@ -25,8 +26,10 @@ import { ReleaseStockReservation } from "../../application/use-cases/ReleaseStoc
 import { RemoveProductVariant } from "../../application/use-cases/RemoveProductVariant";
 import { ReserveStock } from "../../application/use-cases/ReserveStock";
 import { ReverseCommittedStock } from "../../application/use-cases/ReverseCommittedStock";
+import { SetProductTranslations } from "../../application/use-cases/SetProductTranslations";
 import { GetProductDetail } from "../../application/use-cases/GetProductDetail";
 import { GetProductFilterFacets } from "../../application/use-cases/GetProductFilterFacets";
+import { GetTranslationCoverage } from "../../application/use-cases/GetTranslationCoverage";
 import { ListCategories } from "../../application/use-cases/ListCategories";
 import { ListFeaturedProducts } from "../../application/use-cases/ListFeaturedProducts";
 import { ListProducts } from "../../application/use-cases/ListProducts";
@@ -89,12 +92,16 @@ export interface CatalogModule {
   getProductsByIds: GetProductsByIds;
   listTopSellingProducts: ListTopSellingProducts;
   listNewestProducts: ListNewestProducts;
+  /** [0069]: traducciones y cobertura para el panel administrativo. */
+  setProductTranslations: SetProductTranslations;
+  getTranslationCoverage: GetTranslationCoverage;
 }
 
 export function buildCatalogModule(
   dataSource: DataSource,
   ratingSummaryPort: RatingSummaryPort | undefined,
   productOrderHistoryPort: ProductOrderHistoryPort,
+  supportedLocales: Locale[],
 ): CatalogModule {
   const productRepository = new TypeOrmProductRepository(dataSource);
   const productQueryRepository = new TypeOrmProductQueryRepository(dataSource);
@@ -154,6 +161,8 @@ export function buildCatalogModule(
   const getProductsByIds = new GetProductsByIds(productQueryRepository);
   const listTopSellingProducts = new ListTopSellingProducts(productQueryRepository);
   const listNewestProducts = new ListNewestProducts(productQueryRepository);
+  const setProductTranslations = new SetProductTranslations(productRepository);
+  const getTranslationCoverage = new GetTranslationCoverage(productQueryRepository, supportedLocales);
 
   // Se cuenta la venta al pagarse el pedido, no al colocarse: antes de que
   // existiera el flujo de pago, "colocado" era lo más cerca de "vendido" que
@@ -206,5 +215,7 @@ export function buildCatalogModule(
     getProductsByIds,
     listTopSellingProducts,
     listNewestProducts,
+    setProductTranslations,
+    getTranslationCoverage,
   };
 }

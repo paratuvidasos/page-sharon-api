@@ -1,7 +1,9 @@
+import { Locale } from "../../../shared-kernel/domain/enums/Locale";
 import { ProductQueryRepository, ProductSuggestion } from "../../domain/repositories/ProductQueryRepository";
 
 export interface AutocompleteProductsInput {
   term: string;
+  locale: Locale;
 }
 
 const SUGGESTION_LIMIT = 8;
@@ -19,6 +21,6 @@ export class AutocompleteProducts {
     if (term.length === 0) {
       return [];
     }
-    return this.productQueryRepository.suggestByPrefix(term, SUGGESTION_LIMIT);
+    return this.productQueryRepository.suggestByPrefix(term, SUGGESTION_LIMIT, input.locale);
   }
 }

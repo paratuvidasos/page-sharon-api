@@ -2,6 +2,7 @@ import { CartOwnerType } from "../../domain/enums/CartOwnerType";
 import { CartRepository } from "../../domain/repositories/CartRepository";
 import { CouponRepository } from "../../domain/repositories/CouponRepository";
 import { generateId } from "../../../shared-kernel/infrastructure/ids/generate-id";
+import { Locale } from "../../../shared-kernel/domain/enums/Locale";
 import { Cart } from "../../domain/entities/Cart";
 import { buildCartResponse, CartResponse } from "../build-cart-response";
 import { CatalogSnapshotPort } from "../ports/CatalogSnapshotPort";
@@ -9,6 +10,7 @@ import { CatalogSnapshotPort } from "../ports/CatalogSnapshotPort";
 export interface MergeGuestCartIntoUserCartInput {
   guestId: string;
   userId: string;
+  locale?: Locale;
 }
 
 /**
@@ -28,7 +30,7 @@ export class MergeGuestCartIntoUserCart {
     const guestCart = await this.cartRepository.findByGuestId(input.guestId);
     if (!guestCart || guestCart.items.length === 0) {
       const userCart = await this.cartRepository.findByUserId(input.userId);
-      const { response } = await buildCartResponse(userCart, this.catalogSnapshotPort, this.couponRepository);
+      const { response } = await buildCartResponse(userCart, this.catalogSnapshotPort, this.couponRepository, input.locale);
       return response;
     }
 
@@ -46,7 +48,7 @@ export class MergeGuestCartIntoUserCart {
     await this.cartRepository.save(userCart);
     await this.cartRepository.deleteByGuestId(input.guestId);
 
-    const { response } = await buildCartResponse(userCart, this.catalogSnapshotPort, this.couponRepository);
+    const { response } = await buildCartResponse(userCart, this.catalogSnapshotPort, this.couponRepository, input.locale);
     return response;
   }
 }
