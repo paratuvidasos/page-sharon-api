@@ -59,6 +59,7 @@ export class RegisterUserForCheckout {
       avatarUrl: null,
       role: UserRole.CUSTOMER,
       status: UserStatus.ACTIVE,
+      jobTitle: null,
       emailVerifiedAt: null,
       failedLoginAttempts: 0,
       lockedUntil: null,

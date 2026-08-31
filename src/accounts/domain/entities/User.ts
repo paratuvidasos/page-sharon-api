@@ -18,6 +18,8 @@ export interface UserProps {
   avatarUrl: string | null;
   role: UserRole;
   status: UserStatus;
+  /** Puesto mostrado en el panel de empleados (ej. "Fundadora"). Solo aplica a roles de staff. */
+  jobTitle: string | null;
   emailVerifiedAt: Date | null;
   failedLoginAttempts: number;
   lockedUntil: Date | null;
@@ -50,6 +52,10 @@ export class User {
 
   get status(): UserStatus {
     return this.props.status;
+  }
+
+  get jobTitle(): string | null {
+    return this.props.jobTitle;
   }
 
   get addresses(): Address[] {
@@ -184,6 +190,14 @@ export class User {
     this.props.lastName = input.lastName;
     this.props.phone = input.phone;
     this.props.avatarUrl = input.avatarUrl;
+  }
+
+  /** Edición de un miembro de staff desde el panel de empleados — no aplica a clientes. */
+  updateEmployeeProfile(input: { firstName: string; lastName: string; jobTitle: string | null; role: UserRole }): void {
+    this.props.firstName = input.firstName;
+    this.props.lastName = input.lastName;
+    this.props.jobTitle = input.jobTitle;
+    this.props.role = input.role;
   }
 
   get preferredLocale(): Locale | null {

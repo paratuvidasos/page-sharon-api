@@ -15,6 +15,10 @@ import { RejectReview } from "../../../aftersales/application/use-cases/RejectRe
 import { ListCustomers } from "../../../accounts/application/use-cases/admin/ListCustomers";
 import { ReactivateCustomer } from "../../../accounts/application/use-cases/admin/ReactivateCustomer";
 import { SuspendCustomer } from "../../../accounts/application/use-cases/admin/SuspendCustomer";
+import { ListEmployees } from "../../../accounts/application/use-cases/admin/ListEmployees";
+import { CreateEmployee } from "../../../accounts/application/use-cases/admin/CreateEmployee";
+import { UpdateEmployee } from "../../../accounts/application/use-cases/admin/UpdateEmployee";
+import { DeleteEmployee } from "../../../accounts/application/use-cases/admin/DeleteEmployee";
 import { SetProductFeatured } from "../../../catalog/application/use-cases/SetProductFeatured";
 import { SetProductTranslations } from "../../../catalog/application/use-cases/SetProductTranslations";
 import { GetTranslationCoverage } from "../../../catalog/application/use-cases/GetTranslationCoverage";
@@ -90,6 +94,12 @@ import { ListCouponsQuerySchema } from "./schemas/list-coupons.schema";
 import { SalesReportQuerySchema } from "./schemas/sales-report.schema";
 import { CustomerParamsSchema, ListCustomersQuerySchema } from "./schemas/customer.schema";
 import {
+  CreateEmployeeRequestSchema,
+  EmployeeParamsSchema,
+  ListEmployeesQuerySchema,
+  UpdateEmployeeRequestSchema,
+} from "./schemas/employee.schema";
+import {
   ListReviewsForModerationQuerySchema,
   RejectReviewRequestSchema,
   ReviewParamsSchema,
@@ -150,6 +160,10 @@ export interface AdminControllerUseCases {
   listCustomers: ListCustomers;
   suspendCustomer: SuspendCustomer;
   reactivateCustomer: ReactivateCustomer;
+  listEmployees: ListEmployees;
+  createEmployee: CreateEmployee;
+  updateEmployee: UpdateEmployee;
+  deleteEmployee: DeleteEmployee;
   listReviewsForModeration: ListReviewsForModeration;
   approveReview: ApproveReview;
   rejectReview: RejectReview;
@@ -446,6 +460,31 @@ export class AdminController {
   reactivateCustomerHandler = async (req: Request, res: Response): Promise<void> => {
     const { id } = CustomerParamsSchema.parse(req.params);
     await this.useCases.reactivateCustomer.execute({ userId: id });
+    res.status(204).send();
+  };
+
+  listEmployeesHandler = async (req: Request, res: Response): Promise<void> => {
+    const { page, limit, search } = ListEmployeesQuerySchema.parse(req.query);
+    const result = await this.useCases.listEmployees.execute({ page, limit, search });
+    res.status(200).json(result);
+  };
+
+  createEmployeeHandler = async (req: Request, res: Response): Promise<void> => {
+    const input = CreateEmployeeRequestSchema.parse(req.body);
+    const result = await this.useCases.createEmployee.execute(input);
+    res.status(201).json(result);
+  };
+
+  updateEmployeeHandler = async (req: Request, res: Response): Promise<void> => {
+    const { id } = EmployeeParamsSchema.parse(req.params);
+    const input = UpdateEmployeeRequestSchema.parse(req.body);
+    await this.useCases.updateEmployee.execute({ userId: id, ...input });
+    res.status(204).send();
+  };
+
+  deleteEmployeeHandler = async (req: Request, res: Response): Promise<void> => {
+    const { id } = EmployeeParamsSchema.parse(req.params);
+    await this.useCases.deleteEmployee.execute({ userId: id });
     res.status(204).send();
   };
 

@@ -54,6 +54,9 @@ export class UserOrmEntity {
   @Column({ type: "enum", enum: UserStatus, default: UserStatus.ACTIVE })
   status!: UserStatus;
 
+  @Column({ name: "job_title", type: "varchar", length: 150, nullable: true })
+  jobTitle!: string | null;
+
   @Column({ name: "email_verified_at", type: "timestamptz", nullable: true })
   emailVerifiedAt!: Date | null;
 
