@@ -1,0 +1,40 @@
+# Stack de producción/staging: imagen compilada (sin hot-reload ni bind mounts de código).
+# Uso: docker compose -f docker-compose.prod.yml up --build -d
+services:
+  api:
+    build:
+      context: .
+      target: runtime
+    env_file:
+      - .env
+    environment:
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      NODE_ENV: production
+    ports:
+      - "${PORT:-3000}:3000"
+    volumes:
+      - api_uploads:/app/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16.4-bookworm
+    environment:
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+      POSTGRES_DB: ${DB_NAME:-page_sharon_dev}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-page_sharon_dev}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  api_uploads:
