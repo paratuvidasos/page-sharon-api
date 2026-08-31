@@ -43,4 +43,4 @@ docker compose -f docker-compose.prod.yml up --build -d
 ### Versiones fijadas
 
 * Node: `20.18.1` (definido como `ARG NODE_VERSION` en el [Dockerfile](Dockerfile) — para cambiarla, se edita ahí una sola vez).
-* Postgres: `16.4` (definido en `docker-compose.yml` / `docker-compose.prod.yml`).
+* Postgres: `18.1` (definido en `docker-compose.yml` / `docker-compose.prod.yml`) — las migraciones usan `uuidv7()`, nativa desde Postgres 18; no bajar de esta versión mayor.

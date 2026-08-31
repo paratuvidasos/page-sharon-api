@@ -21,13 +21,16 @@ services:
     restart: unless-stopped
 
   postgres:
-    image: postgres:16.4-bookworm
+    # 18+: las migraciones usan uuidv7(), función nativa de Postgres agregada en la versión 18.
+    image: postgres:18.1-bookworm
     environment:
       POSTGRES_USER: ${DB_USER:-postgres}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
       POSTGRES_DB: ${DB_NAME:-page_sharon_dev}
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      # Postgres 18+ cambió el layout de datos: el volumen va en /var/lib/postgresql
+      # (no en .../data como en versiones anteriores).
+      - postgres_data:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-page_sharon_dev}"]
       interval: 5s
