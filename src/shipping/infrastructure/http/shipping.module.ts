@@ -1,18 +1,25 @@
 import { Router } from "express";
 import { DataSource } from "typeorm";
+import { OrderStatusChanged } from "../../../shared-kernel/domain/events/OrderStatusChanged";
 import { ExchangeRateProvider } from "../../../shared-kernel/domain/ports/ExchangeRateProvider";
+import { domainEventBus } from "../../../shared-kernel/infrastructure/events/InMemoryDomainEventBus";
 import { CheckShippingRestrictions } from "../../application/use-cases/CheckShippingRestrictions";
 import { CreateShippingZone } from "../../application/use-cases/CreateShippingZone";
 import { DeleteShippingZone } from "../../application/use-cases/DeleteShippingZone";
+import { GetShipmentTrackingByOrderId } from "../../application/use-cases/GetShipmentTrackingByOrderId";
 import { GetShippingOptions } from "../../application/use-cases/GetShippingOptions";
 import { ListShippingCoverage } from "../../application/use-cases/ListShippingCoverage";
 import { GetShippingZoneById } from "../../application/use-cases/GetShippingZoneById";
 import { ListShippingZones } from "../../application/use-cases/ListShippingZones";
 import { QuoteShippingMethod } from "../../application/use-cases/QuoteShippingMethod";
+import { RegisterShipmentTracking } from "../../application/use-cases/RegisterShipmentTracking";
 import { ProductParcelPort } from "../../application/ports/ProductParcelPort";
 import { SetZoneProductRestrictions } from "../../application/use-cases/SetZoneProductRestrictions";
+import { SyncShipmentTrackingUpdates } from "../../application/use-cases/SyncShipmentTrackingUpdates";
 import { UpdateShippingZone } from "../../application/use-cases/UpdateShippingZone";
 import { buildCarrierRateProvider } from "../carrier/build-carrier-rate-provider";
+import { buildShipmentTrackingProvider } from "../carrier/build-shipment-tracking-provider";
+import { TypeOrmShipmentTrackingRepository } from "../persistence/typeorm-shipment-tracking.repository";
 import { TypeOrmShippingRateQueryRepository } from "../persistence/typeorm-shipping-rate-query.repository";
 import { TypeOrmShippingZoneQueryRepository } from "../persistence/typeorm-shipping-zone-query.repository";
 import { TypeOrmShippingZoneRepository } from "../persistence/typeorm-shipping-zone.repository";
@@ -36,6 +43,10 @@ export interface ShippingModule {
   listShippingZones: ListShippingZones;
   getShippingZoneById: GetShippingZoneById;
   setZoneProductRestrictions: SetZoneProductRestrictions;
+  /** Tracking real con Track123: expuesto para `admin` (lectura) y para el cron (sync). */
+  registerShipmentTracking: RegisterShipmentTracking;
+  getShipmentTrackingByOrderId: GetShipmentTrackingByOrderId;
+  syncShipmentTrackingUpdates: SyncShipmentTrackingUpdates;
 }
 
 export function buildShippingModule(
@@ -46,6 +57,8 @@ export function buildShippingModule(
   const shippingRateQueryRepository = new TypeOrmShippingRateQueryRepository(dataSource);
   const shippingZoneRepository = new TypeOrmShippingZoneRepository(dataSource);
   const shippingZoneQueryRepository = new TypeOrmShippingZoneQueryRepository(dataSource);
+  const shipmentTrackingRepository = new TypeOrmShipmentTrackingRepository(dataSource);
+  const shipmentTrackingProvider = buildShipmentTrackingProvider();
 
   const getShippingOptions = new GetShippingOptions(
     shippingRateQueryRepository,
@@ -55,6 +68,27 @@ export function buildShippingModule(
   );
   const quoteShippingMethod = new QuoteShippingMethod(getShippingOptions);
   const checkShippingRestrictions = new CheckShippingRestrictions(shippingRateQueryRepository);
+
+  const registerShipmentTracking = new RegisterShipmentTracking(
+    shipmentTrackingRepository,
+    shipmentTrackingProvider,
+  );
+
+  // Registra el tracking en Track123 cuando el admin despacha un pedido —
+  // se suscribe acá, en el composition root de `shipping`, sin que `orders`
+  // sepa que este módulo existe (reglas 2 y 3 del CLAUDE.md del repo), mismo
+  // patrón que ya usa `notifications.module.ts` para el mismo evento.
+  domainEventBus.subscribe(OrderStatusChanged.eventName, async (event) => {
+    const changed = event as OrderStatusChanged;
+    if (changed.status !== "SHIPPED" || !changed.trackingNumber || !changed.carrierCode) {
+      return;
+    }
+    await registerShipmentTracking.execute({
+      orderId: changed.orderId,
+      carrierCode: changed.carrierCode,
+      trackingNumber: changed.trackingNumber,
+    });
+  });
 
   const controller = new ShippingController(
     getShippingOptions,
@@ -71,5 +105,11 @@ export function buildShippingModule(
     listShippingZones: new ListShippingZones(shippingZoneQueryRepository),
     getShippingZoneById: new GetShippingZoneById(shippingZoneQueryRepository),
     setZoneProductRestrictions: new SetZoneProductRestrictions(shippingZoneRepository),
+    registerShipmentTracking,
+    getShipmentTrackingByOrderId: new GetShipmentTrackingByOrderId(shipmentTrackingRepository),
+    syncShipmentTrackingUpdates: new SyncShipmentTrackingUpdates(
+      shipmentTrackingRepository,
+      shipmentTrackingProvider,
+    ),
   };
 }

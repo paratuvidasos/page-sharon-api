@@ -3,6 +3,7 @@ import { asyncHandler } from "../../../shared-kernel/infrastructure/http/async-h
 import "./schemas/set-featured.schema";
 import "./schemas/create-coupon.schema";
 import "./schemas/shipping-zone.schema";
+import "./schemas/shipment-tracking.schema";
 import "./schemas/order-fulfillment.schema";
 import "./schemas/category.schema";
 import "./schemas/attribute.schema";
@@ -14,6 +15,7 @@ import "./schemas/update-coupon.schema";
 import "./schemas/list-coupons.schema";
 import "./schemas/sales-report.schema";
 import "./schemas/customer.schema";
+import "./schemas/employee.schema";
 import "./schemas/review-moderation.schema";
 import "./schemas/banner.schema";
 import "./schemas/homepage-config.schema";
@@ -43,6 +45,12 @@ export function buildAdminRoutes(
   router.patch("/customers/:id/suspend", asyncHandler(controller.suspendCustomerHandler));
   router.patch("/customers/:id/reactivate", asyncHandler(controller.reactivateCustomerHandler));
 
+  // Empleados: staff con acceso al panel administrativo.
+  router.get("/employees", asyncHandler(controller.listEmployeesHandler));
+  router.post("/employees", asyncHandler(controller.createEmployeeHandler));
+  router.patch("/employees/:id", asyncHandler(controller.updateEmployeeHandler));
+  router.delete("/employees/:id", asyncHandler(controller.deleteEmployeeHandler));
+
   // [0064]: moderación de reseñas.
   router.get("/reviews", asyncHandler(controller.listReviewsForModerationHandler));
   router.patch("/reviews/:id/approve", asyncHandler(controller.approveReviewHandler));
@@ -70,6 +78,7 @@ export function buildAdminRoutes(
   router.patch("/shipping/zones/:id", asyncHandler(controller.updateShippingZoneHandler));
   router.delete("/shipping/zones/:id", asyncHandler(controller.deleteShippingZoneHandler));
   router.put("/shipping/zones/:id/restrictions", asyncHandler(controller.setZoneRestrictionsHandler));
+  router.get("/shipping/tracking/:orderId", asyncHandler(controller.getShipmentTrackingByOrderIdHandler));
 
   // [0047]: avanzar el pedido en su ciclo de cumplimiento (preparación, envío
   // con guía, entrega).

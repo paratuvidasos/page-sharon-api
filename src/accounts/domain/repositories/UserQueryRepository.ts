@@ -28,6 +28,31 @@ export interface CustomerListPage {
   total: number;
 }
 
+export interface EmployeeListFilter {
+  search?: string;
+}
+
+export interface EmployeeListPagination {
+  page: number;
+  limit: number;
+}
+
+export interface EmployeeListItem {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  jobTitle: string | null;
+  role: UserRole;
+  status: UserStatus;
+  createdAt: Date;
+}
+
+export interface EmployeeListPage {
+  items: EmployeeListItem[];
+  total: number;
+}
+
 /**
  * [0063]: read model de solo lectura para el listado de clientes del panel
  * administrativo. No existía ningún query repository de `accounts` hasta
@@ -38,4 +63,6 @@ export interface CustomerListPage {
  */
 export interface UserQueryRepository {
   listCustomers(filter: CustomerListFilter, pagination: CustomerListPagination): Promise<CustomerListPage>;
+  /** [Empleados]: listado de staff (roles ADMIN/EMPLOYEE) para el panel administrativo. */
+  listEmployees(filter: EmployeeListFilter, pagination: EmployeeListPagination): Promise<EmployeeListPage>;
 }

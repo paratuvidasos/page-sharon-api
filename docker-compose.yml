@@ -1,0 +1,52 @@
+services:
+  api:
+    build:
+      context: .
+      target: dev
+    env_file:
+      - .env
+    environment:
+      # Dentro de la red de Docker el host de Postgres es el nombre del servicio, no localhost.
+      DB_HOST: postgres
+      DB_PORT: "5432"
+    ports:
+      - "${PORT:-3000}:3000"
+    volumes:
+      - ./src:/app/src
+      - ./tsconfig.json:/app/tsconfig.json
+      - ./package.json:/app/package.json
+      - ./uploads:/app/uploads
+      - api_node_modules:/app/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  postgres:
+    # 18+: las migraciones usan uuidv7(), función nativa de Postgres agregada en la versión 18.
+    image: postgres:18.1-bookworm
+    environment:
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+      POSTGRES_DB: ${DB_NAME:-page_sharon_dev}
+    ports:
+      # Puerto expuesto en tu Mac (para conectarte con DBeaver/TablePlus, etc).
+      # Se usa DB_HOST_PORT en vez de DB_PORT porque DB_PORT ya es el puerto que
+      # la app usa *dentro* del contenedor para hablarle a Postgres (5432 fijo,
+      # ver "environment" del servicio api más arriba) — si tienes un Postgres
+      # local corriendo en 5432, cambia DB_HOST_PORT en tu .env, ej. DB_HOST_PORT=5433.
+      - "${DB_HOST_PORT:-5433}:5432"
+    volumes:
+      # Postgres 18+ cambió el layout de datos: el volumen va en /var/lib/postgresql
+      # (no en .../data como en versiones anteriores).
+      - postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-page_sharon_dev}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  api_node_modules:

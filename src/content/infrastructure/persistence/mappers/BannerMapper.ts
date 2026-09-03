@@ -14,6 +14,9 @@ export class BannerMapper {
     orm.startsAt = props.startsAt;
     orm.endsAt = props.endsAt;
     orm.isActive = props.isActive;
+    orm.category = props.category;
+    orm.actionType = props.actionType;
+    orm.placements = props.placements;
     orm.createdAt = props.createdAt;
     return orm;
   }
@@ -28,6 +31,9 @@ export class BannerMapper {
       startsAt: orm.startsAt,
       endsAt: orm.endsAt,
       isActive: orm.isActive,
+      category: orm.category,
+      actionType: orm.actionType,
+      placements: orm.placements,
       createdAt: orm.createdAt,
     });
   }

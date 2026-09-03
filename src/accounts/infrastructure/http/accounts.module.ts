@@ -27,6 +27,10 @@ import { UpdateAddress } from "../../application/use-cases/addresses/UpdateAddre
 import { ListCustomers, GetOrderSummaryForUsersPort } from "../../application/use-cases/admin/ListCustomers";
 import { ReactivateCustomer } from "../../application/use-cases/admin/ReactivateCustomer";
 import { SuspendCustomer } from "../../application/use-cases/admin/SuspendCustomer";
+import { ListEmployees } from "../../application/use-cases/admin/ListEmployees";
+import { CreateEmployee } from "../../application/use-cases/admin/CreateEmployee";
+import { UpdateEmployee } from "../../application/use-cases/admin/UpdateEmployee";
+import { DeleteEmployee } from "../../application/use-cases/admin/DeleteEmployee";
 import { GetCustomerContact } from "../../application/use-cases/profile/GetCustomerContact";
 import { GetProfile } from "../../application/use-cases/profile/GetProfile";
 import { GetUserLocalePreference } from "../../application/use-cases/profile/GetUserLocalePreference";
@@ -60,6 +64,11 @@ export interface AccountsModule {
   listCustomers: ListCustomers;
   suspendCustomer: SuspendCustomer;
   reactivateCustomer: ReactivateCustomer;
+  /** Empleados: staff con acceso al panel administrativo. */
+  listEmployees: ListEmployees;
+  createEmployee: CreateEmployee;
+  updateEmployee: UpdateEmployee;
+  deleteEmployee: DeleteEmployee;
 }
 
 export function buildAccountsModule(
@@ -120,6 +129,10 @@ export function buildAccountsModule(
   const listCustomers = new ListCustomers(userQueryRepository, getOrderSummaryForUsersPort);
   const suspendCustomer = new SuspendCustomer(userRepository, logoutAllSessions);
   const reactivateCustomer = new ReactivateCustomer(userRepository);
+  const listEmployees = new ListEmployees(userQueryRepository);
+  const createEmployee = new CreateEmployee(userRepository, passwordHasher);
+  const updateEmployee = new UpdateEmployee(userRepository);
+  const deleteEmployee = new DeleteEmployee(userRepository, logoutAllSessions);
   const getProfile = new GetProfile(userRepository);
   const setPassword = new SetPassword(userRepository, passwordHasher);
   const deleteAccount = new DeleteAccount(
@@ -184,6 +197,10 @@ export function buildAccountsModule(
     listCustomers,
     suspendCustomer,
     reactivateCustomer,
+    listEmployees,
+    createEmployee,
+    updateEmployee,
+    deleteEmployee,
   };
 }
 

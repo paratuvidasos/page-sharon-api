@@ -16,6 +16,7 @@ export class UserMapper {
       avatarUrl: orm.avatarUrl,
       role: orm.role,
       status: orm.status,
+      jobTitle: orm.jobTitle,
       emailVerifiedAt: orm.emailVerifiedAt,
       failedLoginAttempts: orm.failedLoginAttempts,
       lockedUntil: orm.lockedUntil,
@@ -54,6 +55,7 @@ export class UserMapper {
     orm.avatarUrl = props.avatarUrl;
     orm.role = props.role;
     orm.status = props.status;
+    orm.jobTitle = props.jobTitle;
     orm.emailVerifiedAt = props.emailVerifiedAt;
     orm.failedLoginAttempts = props.failedLoginAttempts;
     orm.lockedUntil = props.lockedUntil;
