@@ -1,4 +1,7 @@
 import { Column, CreateDateColumn, Entity, Index, PrimaryColumn } from "typeorm";
+import { BannerActionType } from "../../../domain/enums/BannerActionType";
+import { BannerCategory } from "../../../domain/enums/BannerCategory";
+import { BannerPlacement } from "../../../domain/enums/BannerPlacement";
 
 @Entity({ name: "banners" })
 export class BannerOrmEntity {
@@ -26,6 +29,15 @@ export class BannerOrmEntity {
 
   @Column({ name: "is_active", type: "boolean", default: true })
   isActive!: boolean;
+
+  @Column({ type: "enum", enum: BannerCategory })
+  category!: BannerCategory;
+
+  @Column({ name: "action_type", type: "enum", enum: BannerActionType })
+  actionType!: BannerActionType;
+
+  @Column({ type: "enum", enum: BannerPlacement, array: true })
+  placements!: BannerPlacement[];
 
   @CreateDateColumn({ name: "created_at", type: "timestamptz" })
   createdAt!: Date;

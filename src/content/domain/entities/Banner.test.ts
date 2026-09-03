@@ -1,4 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { BannerActionType } from "../enums/BannerActionType";
+import { BannerCategory } from "../enums/BannerCategory";
+import { BannerPlacement } from "../enums/BannerPlacement";
 import { InvalidBannerException } from "../exceptions/InvalidBannerException";
 import { Banner } from "./Banner";
 
@@ -8,6 +11,9 @@ function createBanner(overrides: Partial<Parameters<typeof Banner.create>[0]> = 
     imageUrl: "https://cdn.example.com/banner.jpg",
     title: "Promo de verano",
     sortOrder: 0,
+    category: BannerCategory.PROMOCION,
+    actionType: BannerActionType.COMPRAR,
+    placements: [BannerPlacement.HOME_SECTION],
     ...overrides,
   });
 }
@@ -36,6 +42,10 @@ describe("Banner.create", () => {
   it("nace activo por defecto", () => {
     expect(createBanner().toProps().isActive).toBe(true);
   });
+
+  it("rechaza un placements vacío", () => {
+    expect(() => createBanner({ placements: [] })).toThrow(InvalidBannerException);
+  });
 });
 
 describe("Banner.update", () => {
@@ -45,6 +55,17 @@ describe("Banner.update", () => {
     expect(() => banner.update({ endsAt: new Date("2026-05-01T00:00:00.000Z") })).toThrow(
       InvalidBannerException,
     );
+  });
+
+  it("rechaza vaciar placements en un update", () => {
+    const banner = createBanner();
+    expect(() => banner.update({ placements: [] })).toThrow(InvalidBannerException);
+  });
+
+  it("deja placements sin tocar cuando no se manda en el update", () => {
+    const banner = createBanner({ placements: [BannerPlacement.WELCOME_MODAL] });
+    banner.update({ title: "Nuevo título" });
+    expect(banner.toProps().placements).toEqual([BannerPlacement.WELCOME_MODAL]);
   });
 });
 

@@ -1,5 +1,8 @@
 import { generateId } from "../../../shared-kernel/infrastructure/ids/generate-id";
 import { Banner } from "../../domain/entities/Banner";
+import { BannerActionType } from "../../domain/enums/BannerActionType";
+import { BannerCategory } from "../../domain/enums/BannerCategory";
+import { BannerPlacement } from "../../domain/enums/BannerPlacement";
 import { BannerQueryRepository } from "../../domain/repositories/BannerQueryRepository";
 import { BannerRepository } from "../../domain/repositories/BannerRepository";
 
@@ -10,6 +13,9 @@ export interface CreateBannerInput {
   startsAt?: Date | null;
   endsAt?: Date | null;
   isActive?: boolean;
+  category: BannerCategory;
+  actionType: BannerActionType;
+  placements: BannerPlacement[];
 }
 
 /** [0066]: alta de un banner — se agrega al final del orden actual. */

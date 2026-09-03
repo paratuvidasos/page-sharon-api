@@ -1,3 +1,6 @@
+import { BannerActionType } from "../enums/BannerActionType";
+import { BannerCategory } from "../enums/BannerCategory";
+import { BannerPlacement } from "../enums/BannerPlacement";
 import { InvalidBannerException } from "../exceptions/InvalidBannerException";
 
 export interface BannerProps {
@@ -11,6 +14,10 @@ export interface BannerProps {
   /** `null` = sin fecha de fin (no expira). */
   endsAt: Date | null;
   isActive: boolean;
+  category: BannerCategory;
+  actionType: BannerActionType;
+  /** Dónde se muestra el banner — puede vivir en varios lugares a la vez, nunca vacío. */
+  placements: BannerPlacement[];
   createdAt: Date;
 }
 
@@ -23,6 +30,9 @@ export interface CreateBannerInput {
   startsAt?: Date | null;
   endsAt?: Date | null;
   isActive?: boolean;
+  category: BannerCategory;
+  actionType: BannerActionType;
+  placements: BannerPlacement[];
 }
 
 export interface UpdateBannerInput {
@@ -32,6 +42,9 @@ export interface UpdateBannerInput {
   startsAt?: Date | null;
   endsAt?: Date | null;
   isActive?: boolean;
+  category?: BannerCategory;
+  actionType?: BannerActionType;
+  placements?: BannerPlacement[];
 }
 
 /**
@@ -46,6 +59,7 @@ export class Banner {
 
   static create(input: CreateBannerInput): Banner {
     validateSchedule(input.startsAt ?? null, input.endsAt ?? null);
+    validatePlacements(input.placements);
     const title = input.title.trim();
     if (!title) {
       throw new InvalidBannerException("El banner necesita un título.");
@@ -60,6 +74,9 @@ export class Banner {
       startsAt: input.startsAt ?? null,
       endsAt: input.endsAt ?? null,
       isActive: input.isActive ?? true,
+      category: input.category,
+      actionType: input.actionType,
+      placements: input.placements,
       createdAt: new Date(),
     });
   }
@@ -95,6 +112,16 @@ export class Banner {
     if (input.isActive !== undefined) {
       this.props.isActive = input.isActive;
     }
+    if (input.category !== undefined) {
+      this.props.category = input.category;
+    }
+    if (input.actionType !== undefined) {
+      this.props.actionType = input.actionType;
+    }
+    if (input.placements !== undefined) {
+      validatePlacements(input.placements);
+      this.props.placements = input.placements;
+    }
   }
 
   reorder(sortOrder: number): void {
@@ -109,5 +136,11 @@ export class Banner {
 function validateSchedule(startsAt: Date | null, endsAt: Date | null): void {
   if (startsAt && endsAt && endsAt <= startsAt) {
     throw new InvalidBannerException("La fecha de fin debe ser posterior a la de inicio.");
+  }
+}
+
+function validatePlacements(placements: BannerPlacement[]): void {
+  if (placements.length === 0) {
+    throw new InvalidBannerException("El banner necesita al menos un lugar donde mostrarse.");
   }
 }

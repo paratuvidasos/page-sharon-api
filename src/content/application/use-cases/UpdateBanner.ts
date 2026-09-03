@@ -1,3 +1,6 @@
+import { BannerActionType } from "../../domain/enums/BannerActionType";
+import { BannerCategory } from "../../domain/enums/BannerCategory";
+import { BannerPlacement } from "../../domain/enums/BannerPlacement";
 import { BannerNotFoundException } from "../../domain/exceptions/BannerNotFoundException";
 import { BannerRepository } from "../../domain/repositories/BannerRepository";
 
@@ -9,6 +12,9 @@ export interface UpdateBannerInput {
   startsAt?: Date | null;
   endsAt?: Date | null;
   isActive?: boolean;
+  category?: BannerCategory;
+  actionType?: BannerActionType;
+  placements?: BannerPlacement[];
 }
 
 /** [0066]: edición de un banner (el orden se cambia con `ReorderBanners`). */
@@ -28,6 +34,9 @@ export class UpdateBanner {
       startsAt: input.startsAt,
       endsAt: input.endsAt,
       isActive: input.isActive,
+      category: input.category,
+      actionType: input.actionType,
+      placements: input.placements,
     });
     await this.bannerRepository.save(banner);
   }

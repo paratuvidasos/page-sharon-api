@@ -1,3 +1,7 @@
+import { BannerActionType } from "../enums/BannerActionType";
+import { BannerCategory } from "../enums/BannerCategory";
+import { BannerPlacement } from "../enums/BannerPlacement";
+
 export interface BannerListItem {
   id: string;
   imageUrl: string;
@@ -7,6 +11,9 @@ export interface BannerListItem {
   startsAt: Date | null;
   endsAt: Date | null;
   isActive: boolean;
+  category: BannerCategory;
+  actionType: BannerActionType;
+  placements: BannerPlacement[];
 }
 
 /**
@@ -19,5 +26,6 @@ export interface BannerListItem {
 export interface BannerQueryRepository {
   listForAdmin(): Promise<BannerListItem[]>;
 
-  listActiveForHomepage(now: Date): Promise<BannerListItem[]>;
+  /** `placement` sin definir = todos los lugares (comportamiento histórico). */
+  listActiveForHomepage(now: Date, placement?: BannerPlacement): Promise<BannerListItem[]>;
 }

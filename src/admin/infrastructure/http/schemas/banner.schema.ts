@@ -1,4 +1,8 @@
 import { z } from "zod";
+import { BannerActionType } from "../../../../content/domain/enums/BannerActionType";
+import { BannerCategory } from "../../../../content/domain/enums/BannerCategory";
+import { BannerPlacement } from "../../../../content/domain/enums/BannerPlacement";
+import { EndOfDayDateSchema } from "../../../../shared-kernel/infrastructure/http/end-of-day-date.schema";
 import { registry } from "../../../../shared-kernel/infrastructure/swagger/registry";
 
 export const CreateBannerRequestSchema = z.object({
@@ -6,8 +10,11 @@ export const CreateBannerRequestSchema = z.object({
   linkUrl: z.string().url().nullable().optional(),
   title: z.string().min(1).max(150),
   startsAt: z.coerce.date().nullable().optional(),
-  endsAt: z.coerce.date().nullable().optional(),
+  endsAt: EndOfDayDateSchema.nullable().optional(),
   isActive: z.boolean().optional(),
+  category: z.nativeEnum(BannerCategory),
+  actionType: z.nativeEnum(BannerActionType),
+  placements: z.array(z.nativeEnum(BannerPlacement)).min(1),
 });
 
 export const UpdateBannerRequestSchema = z.object({
@@ -15,8 +22,11 @@ export const UpdateBannerRequestSchema = z.object({
   linkUrl: z.string().url().nullable().optional(),
   title: z.string().min(1).max(150).optional(),
   startsAt: z.coerce.date().nullable().optional(),
-  endsAt: z.coerce.date().nullable().optional(),
+  endsAt: EndOfDayDateSchema.nullable().optional(),
   isActive: z.boolean().optional(),
+  category: z.nativeEnum(BannerCategory).optional(),
+  actionType: z.nativeEnum(BannerActionType).optional(),
+  placements: z.array(z.nativeEnum(BannerPlacement)).min(1).optional(),
 });
 
 export const ReorderBannersRequestSchema = z.object({
@@ -36,6 +46,9 @@ export const BannerAdminResponseSchema = z.object({
   startsAt: z.coerce.date().nullable(),
   endsAt: z.coerce.date().nullable(),
   isActive: z.boolean(),
+  category: z.nativeEnum(BannerCategory),
+  actionType: z.nativeEnum(BannerActionType),
+  placements: z.array(z.nativeEnum(BannerPlacement)),
 });
 
 export const ListBannersAdminResponseSchema = z.object({ items: z.array(BannerAdminResponseSchema) });
