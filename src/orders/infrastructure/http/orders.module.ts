@@ -34,6 +34,7 @@ import { CustomerContactPort } from "../../application/ports/CustomerContactPort
 import { PaymentSessionPort } from "../../application/ports/PaymentSessionPort";
 import { ShippingAddressPort } from "../../application/ports/ShippingAddressPort";
 import { ShippingQuotePort } from "../../application/ports/ShippingQuotePort";
+import { ShipmentTrackingPort } from "../../application/ports/ShipmentTrackingPort";
 import { ShippingRestrictionPort } from "../../application/ports/ShippingRestrictionPort";
 import { ReserveStockPort, ResolveStockReservationPort } from "../../application/ports/StockReservationPort";
 import { TypeOrmOrderQueryRepository } from "../persistence/typeorm-order-query.repository";
@@ -53,6 +54,7 @@ export interface OrdersModuleDependencies {
   customerContactPort: CustomerContactPort;
   shippingQuotePort: ShippingQuotePort;
   shippingRestrictionPort: ShippingRestrictionPort;
+  shipmentTrackingPort: ShipmentTrackingPort;
   couponPort: CouponPort;
   redeemCouponPort: RedeemCouponPort;
   clearCartPort: ClearCartPort;
@@ -95,7 +97,11 @@ export function buildOrdersModule(
   const orderRepository = new TypeOrmOrderRepository(dataSource);
 
   const getOrderHistory = new GetOrderHistory(orderQueryRepository, deps.customerContactPort);
-  const getOrderByNumber = new GetOrderByNumber(orderRepository, deps.customerContactPort);
+  const getOrderByNumber = new GetOrderByNumber(
+    orderRepository,
+    deps.customerContactPort,
+    deps.shipmentTrackingPort,
+  );
   const hasUserPurchasedProduct = new HasUserPurchasedProduct(orderQueryRepository);
   const hasProductBeenOrdered = new HasProductBeenOrdered(orderQueryRepository);
   const adminListOrders = new AdminListOrders(orderQueryRepository);

@@ -27,13 +27,39 @@ export const RetryPaymentResponseSchema = z.object({
   payment: PaymentSessionResponseSchema,
 });
 
+const ShipmentTrackingEventResponseSchema = z.object({
+  status: z.string(),
+  description: z.string(),
+  location: z.string().nullable(),
+  occurredAt: z.string().datetime(),
+});
+
+/**
+ * Estado real de la transportadora (Track123), aparte del estado interno
+ * que fija el admin. `null` mientras el pedido no se despacha, o si todavía
+ * no hay un registro sincronizado — nunca aparece como error.
+ */
+const RealTimeTrackingResponseSchema = z
+  .object({
+    status: z.string(),
+    carrierCode: z.string(),
+    trackingNumber: z.string(),
+    events: z.array(ShipmentTrackingEventResponseSchema),
+    lastSyncedAt: z.string().datetime().nullable(),
+  })
+  .nullable();
+
+export const OrderDetailResponseSchema = OrderSummaryResponseSchema.extend({
+  realTimeTracking: RealTimeTrackingResponseSchema,
+});
+
 registry.registerPath({
   method: "get",
   path: "/orders/{orderNumber}",
   tags: ["orders"],
   summary: "Consulta un pedido por su número",
   description:
-    "Respalda la pantalla de confirmación ([0039]) y la de retorno de la pasarela: los parámetros que Bold agrega a la URL vienen del navegador, el estado real es este.",
+    "Respalda la pantalla de confirmación ([0039]) y la de retorno de la pasarela: los parámetros que Bold agrega a la URL vienen del navegador, el estado real es este. Incluye `realTimeTracking` con el estado real de la transportadora cuando el pedido ya se despachó.",
   request: {
     params: z.object({ orderNumber: z.string() }),
     query: GetOrderQuerySchema,
@@ -41,7 +67,7 @@ registry.registerPath({
   responses: {
     200: {
       description: "Pedido encontrado.",
-      content: { "application/json": { schema: OrderSummaryResponseSchema } },
+      content: { "application/json": { schema: OrderDetailResponseSchema } },
     },
     404: {
       description:
