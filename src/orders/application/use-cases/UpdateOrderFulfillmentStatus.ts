@@ -145,6 +145,7 @@ export class UpdateOrderFulfillmentStatus {
         props.shipment?.carrierName ?? null,
         props.shipment?.trackingNumber ?? null,
         props.shipment?.trackingUrl ?? null,
+        props.shipment?.carrierCode ?? null,
       ),
     );
   }

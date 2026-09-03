@@ -9,6 +9,10 @@ import { DomainEvent } from "./DomainEvent";
  * `orders` ni a `accounts` para armar el mensaje (regla 3 del CLAUDE.md del
  * repo). Un pedido de invitado no tiene `userId`, y por eso viaja también el
  * correo: es la única forma de avisarle a quien compró sin cuenta.
+ *
+ * `carrierCode` se agregó para que el suscriptor de tracking real (Track123)
+ * pueda resolver la transportadora sin volver a consultarle a `orders` — es
+ * aditivo, ningún suscriptor existente lo necesita.
  */
 export class OrderStatusChanged implements DomainEvent {
   static readonly eventName = "orders.order_status_changed";
@@ -25,6 +29,7 @@ export class OrderStatusChanged implements DomainEvent {
     public readonly carrierName: string | null,
     public readonly trackingNumber: string | null,
     public readonly trackingUrl: string | null,
+    public readonly carrierCode: string | null,
   ) {
     this.occurredAt = new Date();
   }
