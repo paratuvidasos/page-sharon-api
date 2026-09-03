@@ -1,4 +1,4 @@
-import { DataSource, Repository } from "typeorm";
+import { DataSource, In, Not, Repository } from "typeorm";
 import { Product } from "../../domain/entities/Product";
 import { ProductNotFoundException } from "../../domain/exceptions/ProductNotFoundException";
 import { VariantNotFoundException } from "../../domain/exceptions/VariantNotFoundException";
@@ -21,12 +21,24 @@ export class TypeOrmProductRepository implements ProductRepository {
    * [0069]: las traducciones se guardan aparte, con un delete+insert manual
    * en la misma transacción — ver el comentario de
    * `ProductOrmEntity.translations` sobre por qué no se cascadea.
+   *
+   * [0057]: las variantes removidas del agregado también se borran a mano
+   * (mismo motivo: el orphan removal de TypeORM rompe con `product_id` NOT
+   * NULL, ver el comentario en `ProductOrmEntity.variants`) — `cascade` en
+   * la relación solo se usa para insert/update de las que quedan.
    */
   async save(product: Product): Promise<void> {
     const orm = ProductMapper.toOrm(product);
     const translations = product.toProps().translations;
+    const currentVariantIds = orm.variants.map((variant) => variant.id);
 
     await this.dataSource.transaction(async (manager) => {
+      if (currentVariantIds.length > 0) {
+        await manager.delete(ProductVariantOrmEntity, {
+          productId: product.id,
+          id: Not(In(currentVariantIds)),
+        });
+      }
       await manager.save(ProductOrmEntity, orm);
 
       await manager.delete(ProductTranslationOrmEntity, { productId: product.id });
