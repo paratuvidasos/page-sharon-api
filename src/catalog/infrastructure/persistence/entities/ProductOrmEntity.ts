@@ -71,13 +71,14 @@ export class ProductOrmEntity {
   @Index("ix_products_is_featured")
   isFeatured!: boolean;
 
-  // [0057]: `orphanedRowAction: "delete"` es necesario para que quitar una
-  // variante del arreglo de dominio (`Product.removeVariant`) borre de verdad
-  // la fila en `product_variants` al guardar — sin esto, `cascade: true` solo
-  // cubre inserts/updates y la fila quedaba huérfana en Postgres en silencio.
+  // [0057]: sin `orphanedRowAction` — con `product_id` NOT NULL, el orphan
+  // removal de TypeORM intenta un UPDATE que pone `product_id` en NULL antes
+  // del DELETE y revienta la constraint (mismo bug ya documentado para
+  // `translations`, ver `ProductMapper.translationsToOrm`). `cascade: true`
+  // solo cubre inserts/updates; `TypeOrmProductRepository.save` borra a mano
+  // las variantes removidas del agregado, mismo patrón que las traducciones.
   @OneToMany(() => ProductVariantOrmEntity, (variant) => variant.product, {
     cascade: true,
-    orphanedRowAction: "delete",
   })
   variants!: ProductVariantOrmEntity[];
 
