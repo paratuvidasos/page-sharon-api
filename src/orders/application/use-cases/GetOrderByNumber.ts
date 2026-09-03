@@ -3,11 +3,22 @@ import { OrderRepository } from "../../domain/repositories/OrderRepository";
 import { buildOrderSummary, OrderSummary } from "../order-summary";
 import { canAccessOrder } from "../order-access";
 import { CustomerContactPort } from "../ports/CustomerContactPort";
+import { ShipmentTrackingPort, ShipmentTrackingView } from "../ports/ShipmentTrackingPort";
 
 export interface GetOrderByNumberInput {
   orderNumber: string;
   authUserId: string | null;
   guestEmail: string | null;
+}
+
+export interface OrderDetail extends OrderSummary {
+  /**
+   * Estado real de la transportadora (Track123), aparte del historial de
+   * estados que fija el admin. `null` mientras el pedido no se despacha, o
+   * si todavía no hay un registro sincronizado — nunca por un error, que
+   * degrada igual a `null` en vez de tumbar el resto del detalle del pedido.
+   */
+  realTimeTracking: ShipmentTrackingView | null;
 }
 
 /**
@@ -22,9 +33,10 @@ export class GetOrderByNumber {
   constructor(
     private readonly orderRepository: OrderRepository,
     private readonly customerContactPort: CustomerContactPort,
+    private readonly shipmentTrackingPort: ShipmentTrackingPort,
   ) {}
 
-  async execute(input: GetOrderByNumberInput): Promise<OrderSummary> {
+  async execute(input: GetOrderByNumberInput): Promise<OrderDetail> {
     const order = await this.orderRepository.findByOrderNumber(input.orderNumber);
     if (!order) {
       throw new OrderNotFoundException();
@@ -42,6 +54,23 @@ export class GetOrderByNumber {
       throw new OrderNotFoundException();
     }
 
-    return buildOrderSummary(order);
+    const summary = buildOrderSummary(order);
+    return { ...summary, realTimeTracking: await this.fetchRealTimeTracking(summary) };
+  }
+
+  /**
+   * Sin envío todavía no tiene sentido preguntarle a `shipping`. Con envío,
+   * la consulta es best-effort: que Track123 no tenga datos todavía (o que
+   * el proveedor esté caído) no puede tumbar el detalle del pedido.
+   */
+  private async fetchRealTimeTracking(summary: OrderSummary): Promise<ShipmentTrackingView | null> {
+    if (!summary.shipment) {
+      return null;
+    }
+    try {
+      return await this.shipmentTrackingPort.execute({ orderId: summary.id });
+    } catch {
+      return null;
+    }
   }
 }

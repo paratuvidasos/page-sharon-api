@@ -145,6 +145,7 @@ async function bootstrap(): Promise<void> {
     customerContactPort: accounts.getCustomerContact,
     shippingQuotePort: shipping.quoteShippingMethod,
     shippingRestrictionPort: shipping.checkShippingRestrictions,
+    shipmentTrackingPort: shipping.getShipmentTrackingByOrderId,
     couponPort: cart.quoteCoupon,
     redeemCouponPort: cart.redeemCoupon,
     clearCartPort: cart.clearCartForUser,
