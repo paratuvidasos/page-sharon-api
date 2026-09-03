@@ -13,9 +13,10 @@ const DEFAULT_CRON_EXPRESSION = "*/30 * * * *";
 export function scheduleTrackingSync(syncShipmentTrackingUpdates: SyncShipmentTrackingUpdates): void {
   const expression = process.env.TRACKING_SYNC_CRON ?? DEFAULT_CRON_EXPRESSION;
 
-  cron.schedule(expression, () => {
+  const task = cron.schedule(expression, () => {
     syncShipmentTrackingUpdates
       .execute()
       .catch((error) => console.error("[shipping] Error al sincronizar tracking con Track123:", error));
   });
+  task.unref();
 }
