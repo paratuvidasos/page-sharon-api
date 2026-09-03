@@ -3,6 +3,7 @@ import { asyncHandler } from "../../../shared-kernel/infrastructure/http/async-h
 import "./schemas/set-featured.schema";
 import "./schemas/create-coupon.schema";
 import "./schemas/shipping-zone.schema";
+import "./schemas/shipment-tracking.schema";
 import "./schemas/order-fulfillment.schema";
 import "./schemas/category.schema";
 import "./schemas/attribute.schema";
@@ -77,6 +78,7 @@ export function buildAdminRoutes(
   router.patch("/shipping/zones/:id", asyncHandler(controller.updateShippingZoneHandler));
   router.delete("/shipping/zones/:id", asyncHandler(controller.deleteShippingZoneHandler));
   router.put("/shipping/zones/:id/restrictions", asyncHandler(controller.setZoneRestrictionsHandler));
+  router.get("/shipping/tracking/:orderId", asyncHandler(controller.getShipmentTrackingByOrderIdHandler));
 
   // [0047]: avanzar el pedido en su ciclo de cumplimiento (preparación, envío
   // con guía, entrega).
