@@ -15,6 +15,7 @@ import { buildNotificationsModule } from "./notifications/infrastructure/http/no
 import { buildOrdersModule } from "./orders/infrastructure/http/orders.module";
 import { buildPaymentsModule } from "./payments/infrastructure/http/payments.module";
 import { buildShippingModule } from "./shipping/infrastructure/http/shipping.module";
+import { scheduleTrackingSync } from "./shipping/infrastructure/scheduler/schedule-tracking-sync";
 import { buildWishlistModule } from "./wishlist/infrastructure/http/wishlist.module";
 import { AppDataSource } from "./shared-kernel/infrastructure/persistence/data-source";
 import { ProductOrderHistoryPort } from "./catalog/application/ports/ProductOrderHistoryPort";
@@ -210,6 +211,7 @@ async function bootstrap(): Promise<void> {
       createCoupon: cart.createCoupon,
       createShippingZone: shipping.createShippingZone,
       getShippingZoneById: shipping.getShippingZoneById,
+      getShipmentTrackingByOrderId: shipping.getShipmentTrackingByOrderId,
       updateShippingZone: shipping.updateShippingZone,
       deleteShippingZone: shipping.deleteShippingZone,
       listShippingZones: shipping.listShippingZones,
@@ -277,6 +279,12 @@ async function bootstrap(): Promise<void> {
       .execute()
       .catch((error) => console.error("[catalog] Error al liberar reservas vencidas:", error));
   }, RESERVATION_SWEEP_INTERVAL_MS).unref();
+
+  // Sincroniza el estado real de los envíos activos con Track123. Vive
+  // fuera de `shipping.module.ts` porque agenda un proceso de fondo, no
+  // arma casos de uso — mismo criterio que separa `setInterval` de
+  // `buildCatalogModule` más abajo.
+  scheduleTrackingSync(shipping.syncShipmentTrackingUpdates);
 
   app.listen(port, () => {
     console.log(`page-sharon-api listening on port ${port}`);

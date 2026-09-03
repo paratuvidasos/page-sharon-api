@@ -53,6 +53,7 @@ import { buildPaginationMeta } from "../../../shared-kernel/infrastructure/http/
 import { CreateShippingZone } from "../../../shipping/application/use-cases/CreateShippingZone";
 import { DeleteShippingZone } from "../../../shipping/application/use-cases/DeleteShippingZone";
 import { GetShippingZoneById } from "../../../shipping/application/use-cases/GetShippingZoneById";
+import { GetShipmentTrackingByOrderId } from "../../../shipping/application/use-cases/GetShipmentTrackingByOrderId";
 import { ListShippingZones } from "../../../shipping/application/use-cases/ListShippingZones";
 import { SetZoneProductRestrictions } from "../../../shipping/application/use-cases/SetZoneProductRestrictions";
 import { UpdateShippingZone } from "../../../shipping/application/use-cases/UpdateShippingZone";
@@ -118,6 +119,7 @@ import {
   ShippingZoneParamsSchema,
   UpdateShippingZoneRequestSchema,
 } from "./schemas/shipping-zone.schema";
+import { ShipmentTrackingParamsSchema } from "./schemas/shipment-tracking.schema";
 
 export interface AdminControllerUseCases {
   setProductFeatured: SetProductFeatured;
@@ -127,6 +129,7 @@ export interface AdminControllerUseCases {
   createCoupon: CreateCoupon;
   createShippingZone: CreateShippingZone;
   getShippingZoneById: GetShippingZoneById;
+  getShipmentTrackingByOrderId: GetShipmentTrackingByOrderId;
   updateShippingZone: UpdateShippingZone;
   deleteShippingZone: DeleteShippingZone;
   listShippingZones: ListShippingZones;
@@ -215,6 +218,12 @@ export class AdminController {
     const { id } = ShippingZoneParamsSchema.parse(req.params);
     const zone = await this.useCases.getShippingZoneById.execute({ zoneId: id });
     res.status(200).json(zone);
+  };
+
+  getShipmentTrackingByOrderIdHandler = async (req: Request, res: Response): Promise<void> => {
+    const { orderId } = ShipmentTrackingParamsSchema.parse(req.params);
+    const tracking = await this.useCases.getShipmentTrackingByOrderId.execute({ orderId });
+    res.status(200).json(tracking);
   };
 
   listShippingZonesHandler = async (req: Request, res: Response): Promise<void> => {
