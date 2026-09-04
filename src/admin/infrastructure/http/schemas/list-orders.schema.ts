@@ -2,7 +2,7 @@ import { z } from "zod";
 import { OrderStatus } from "../../../../orders/domain/enums/OrderStatus";
 import { PaymentMethod } from "../../../../orders/domain/enums/PaymentMethod";
 import { OrderHistoryItemResponseSchema } from "../../../../orders/infrastructure/http/schemas/order-history.schema";
-import { OrderSummaryResponseSchema } from "../../../../orders/infrastructure/http/schemas/checkout.schema";
+import { OrderDetailResponseSchema } from "../../../../orders/infrastructure/http/schemas/order-detail.schema";
 import {
   paginatedResponseSchema,
   PaginationQuerySchema,
@@ -49,7 +49,7 @@ registry.registerPath({
   responses: {
     200: {
       description: "Detalle del pedido.",
-      content: { "application/json": { schema: OrderSummaryResponseSchema } },
+      content: { "application/json": { schema: OrderDetailResponseSchema } },
     },
     404: { description: "El pedido no existe." },
   },
