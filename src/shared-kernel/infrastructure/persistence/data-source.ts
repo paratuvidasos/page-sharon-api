@@ -1,6 +1,9 @@
 import "dotenv/config";
 import "reflect-metadata";
+import path from "node:path";
 import { DataSource } from "typeorm";
+
+const isTs = __filename.endsWith(".ts");
 
 export const AppDataSource = new DataSource({
   type: "postgres",
@@ -11,6 +14,10 @@ export const AppDataSource = new DataSource({
   database: process.env.DB_NAME ?? "page_sharon_dev",
   synchronize: false,
   logging: process.env.NODE_ENV === "development",
-  entities: ["src/*/infrastructure/persistence/entities/**/*.ts"],
-  migrations: ["src/*/infrastructure/persistence/migrations/*.ts"],
+  entities: isTs
+    ? ["src/*/infrastructure/persistence/entities/**/*.ts"]
+    : ["dist/*/infrastructure/persistence/entities/**/*.js"],
+  migrations: isTs
+    ? ["src/*/infrastructure/persistence/migrations/*.ts"]
+    : ["dist/*/infrastructure/persistence/migrations/*.js"],
 });
