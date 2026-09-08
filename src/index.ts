@@ -62,6 +62,17 @@ async function bootstrap(): Promise<void> {
   app.use(cookieParser());
   app.use("/uploads", express.static(process.env.UPLOADS_DIR ?? "uploads"));
 
+  app.get("/", (_req, res) => {
+    res.json({
+      name: "page-sharon-api",
+      status: "online",
+      message: "Sharon Backend API is running successfully",
+      timestamp: new Date().toISOString(),
+      docs: "/api/docs",
+      health: "/api/v1/health",
+    });
+  });
+
   app.get("/api/v1/health", (_req, res) => {
     res.json({ status: "ok" });
   });
