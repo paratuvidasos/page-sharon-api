@@ -105,7 +105,7 @@ export function buildOrdersModule(
   const hasUserPurchasedProduct = new HasUserPurchasedProduct(orderQueryRepository);
   const hasProductBeenOrdered = new HasProductBeenOrdered(orderQueryRepository);
   const adminListOrders = new AdminListOrders(orderQueryRepository);
-  const adminGetOrderByNumber = new AdminGetOrderByNumber(orderRepository);
+  const adminGetOrderByNumber = new AdminGetOrderByNumber(orderRepository, deps.shipmentTrackingPort);
   const salesReportQueryRepository = new TypeOrmSalesReportQueryRepository(dataSource);
   const getSalesReport = new GetSalesReport(salesReportQueryRepository);
   const exportSalesReportCsv = new ExportSalesReportCsv(salesReportQueryRepository);

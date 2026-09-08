@@ -1,9 +1,10 @@
 import { OrderNotFoundException } from "../../domain/exceptions/OrderNotFoundException";
 import { OrderRepository } from "../../domain/repositories/OrderRepository";
-import { buildOrderSummary, OrderSummary } from "../order-summary";
+import { buildOrderSummary } from "../order-summary";
 import { canAccessOrder } from "../order-access";
+import { fetchRealTimeTracking, OrderDetail } from "../order-detail";
 import { CustomerContactPort } from "../ports/CustomerContactPort";
-import { ShipmentTrackingPort, ShipmentTrackingView } from "../ports/ShipmentTrackingPort";
+import { ShipmentTrackingPort } from "../ports/ShipmentTrackingPort";
 
 export interface GetOrderByNumberInput {
   orderNumber: string;
@@ -11,15 +12,7 @@ export interface GetOrderByNumberInput {
   guestEmail: string | null;
 }
 
-export interface OrderDetail extends OrderSummary {
-  /**
-   * Estado real de la transportadora (Track123), aparte del historial de
-   * estados que fija el admin. `null` mientras el pedido no se despacha, o
-   * si todavía no hay un registro sincronizado — nunca por un error, que
-   * degrada igual a `null` en vez de tumbar el resto del detalle del pedido.
-   */
-  realTimeTracking: ShipmentTrackingView | null;
-}
+export type { OrderDetail };
 
 /**
  * [0037] + [0039]: el pedido para la pantalla de resumen y de confirmación.
@@ -55,22 +48,6 @@ export class GetOrderByNumber {
     }
 
     const summary = buildOrderSummary(order);
-    return { ...summary, realTimeTracking: await this.fetchRealTimeTracking(summary) };
-  }
-
-  /**
-   * Sin envío todavía no tiene sentido preguntarle a `shipping`. Con envío,
-   * la consulta es best-effort: que Track123 no tenga datos todavía (o que
-   * el proveedor esté caído) no puede tumbar el detalle del pedido.
-   */
-  private async fetchRealTimeTracking(summary: OrderSummary): Promise<ShipmentTrackingView | null> {
-    if (!summary.shipment) {
-      return null;
-    }
-    try {
-      return await this.shipmentTrackingPort.execute({ orderId: summary.id });
-    } catch {
-      return null;
-    }
+    return { ...summary, realTimeTracking: await fetchRealTimeTracking(summary, this.shipmentTrackingPort) };
   }
 }
