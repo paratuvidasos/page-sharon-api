@@ -45,12 +45,30 @@ async function bootstrap(): Promise<void> {
   await AppDataSource.initialize();
 
   const app = express();
-  // [0070]: `X-Forwarded-For` solo es confiable detrás de nuestro propio
-  // proxy/balanceador — sin esto, `req.socket.remoteAddress` sería la IP
-  // del proxy y no la del visitante, y la sugerencia de idioma/moneda por
-  // geo-IP resolvería siempre el mismo país.
   app.set("trust proxy", 1);
-  app.use(cors({ origin: process.env.FRONTEND_URL, credentials: true }));
+
+  const corsConfig = process.env.CORS_ORIGINS || process.env.FRONTEND_URL || "http://localhost:5190";
+  const allowedOrigins = new Set(
+    corsConfig
+      .split(",")
+      .map((s) => s.trim().replace(/\/+$/, ""))
+      .filter(Boolean)
+  );
+
+  app.use(
+    cors({
+      origin: (origin, callback) => {
+        if (!origin) return callback(null, true);
+        const normalized = origin.trim().replace(/\/+$/, "");
+        if (allowedOrigins.has(normalized) || allowedOrigins.has("*")) {
+          callback(null, true);
+        } else {
+          callback(null, false);
+        }
+      },
+      credentials: true,
+    })
+  );
 
   const payments = buildPaymentsModule(AppDataSource);
   // Antes del express.json() global: el webhook de la pasarela verifica su
