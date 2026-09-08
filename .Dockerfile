@@ -30,7 +30,7 @@ ENV NODE_ENV=development
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-EXPOSE 3000
+EXPOSE 3002
 CMD ["npm", "run", "start:dev"]
 
 # ---------- runtime: imagen final, mínima ----------
@@ -46,6 +46,6 @@ COPY --chown=node:node --from=prod-deps /app/node_modules ./node_modules
 COPY --chown=node:node --from=build /app/dist ./dist
 COPY --chown=node:node package.json ./
 
-EXPOSE 3000
+EXPOSE 3002
 
 CMD ["node", "dist/index.js"]
